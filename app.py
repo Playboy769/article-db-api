@@ -1,15 +1,21 @@
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from db import conn_ctx
+from db import conn_ctx, init_schema
 
-app = FastAPI(title="Article DB")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_schema()
+    yield
+
+
+app = FastAPI(title="Article DB", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,8 +23,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-templates = Jinja2Templates(directory="templates")
 
 
 # ---------- models ----------
@@ -400,12 +404,6 @@ def delete_report(rid: int):
     with conn_ctx() as conn:
         conn.execute("DELETE FROM reports WHERE id = ?", (rid,))
     return {"ok": True}
-
-
-# ---------- UI ----------
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/healthz")
