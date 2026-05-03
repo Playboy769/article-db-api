@@ -275,7 +275,7 @@ def list_articles(
         params.append(tag)
 
     sql = """
-        SELECT a.id, a.title, a.author, a.source, a.language, a.summary,
+        SELECT a.id, a.title, a.content, a.author, a.source, a.language, a.summary,
                a.date, a.images, a.category_id,
                c.name AS category_name, a.created_at, a.updated_at
         FROM articles a
@@ -302,7 +302,7 @@ def search(q: str, limit: int = Query(20, le=100)):
         try:
             rows = conn.execute(
                 """
-                SELECT a.id, a.title, a.author, a.source, a.language, a.summary,
+                SELECT a.id, a.title, a.content, a.author, a.source, a.language, a.summary,
                        a.date, a.images, a.category_id,
                        c.name AS category_name, a.created_at,
                        bm25(articles_fts) AS score
@@ -322,7 +322,7 @@ def search(q: str, limit: int = Query(20, le=100)):
             like = f"%{q}%"
             rows = conn.execute(
                 """
-                SELECT a.id, a.title, a.author, a.source, a.language, a.summary,
+                SELECT a.id, a.title, a.content, a.author, a.source, a.language, a.summary,
                        a.date, a.images, a.category_id,
                        c.name AS category_name, a.created_at,
                        NULL AS score
