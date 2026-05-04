@@ -182,6 +182,15 @@ def list_categories():
     return roots
 
 
+@app.patch("/categories/{cid}")
+def update_category(cid: int, c: CategoryIn):
+    with conn_ctx() as conn:
+        if not conn.execute("SELECT id FROM categories WHERE id = ?", (cid,)).fetchone():
+            raise HTTPException(404, "not found")
+        conn.execute("UPDATE categories SET name = ? WHERE id = ?", (c.name, cid))
+        return conn.execute("SELECT * FROM categories WHERE id = ?", (cid,)).fetchone()
+
+
 @app.delete("/categories/{cid}")
 def delete_category(cid: int):
     with conn_ctx() as conn:
