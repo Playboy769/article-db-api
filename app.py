@@ -12,6 +12,15 @@ from db import conn_ctx, init_schema
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_schema()
+    # apply column migrations for existing databases
+    with conn_ctx() as conn:
+        for stmt in [
+            "ALTER TABLE articles ADD COLUMN starred INTEGER DEFAULT 0",
+        ]:
+            try:
+                conn.execute(stmt)
+            except Exception:
+                pass
     yield
 
 
@@ -37,6 +46,7 @@ class ArticleIn(BaseModel):
     summary: Optional[str] = None
     date: Optional[str] = None
     images: str = "[]"
+    starred: int = 0
 
 
 class ArticleUpdate(BaseModel):
@@ -50,6 +60,11 @@ class ArticleUpdate(BaseModel):
     summary: Optional[str] = None
     date: Optional[str] = None
     images: Optional[str] = None
+    starred: Optional[int] = None
+
+
+class TagIn(BaseModel):
+    name: str
 
 
 class CategoryIn(BaseModel):
@@ -204,10 +219,10 @@ def create_article(a: ArticleIn):
     with conn_ctx() as conn:
         cur = conn.execute(
             """INSERT INTO articles
-               (title, content, author, source, language, category_id, summary, date, images)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (title, content, author, source, language, category_id, summary, date, images, starred)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (a.title, a.content, a.author, a.source, a.language,
-             a.category_id, a.summary, a.date, a.images),
+             a.category_id, a.summary, a.date, a.images, a.starred),
         )
         aid = cur.lastrowid
         if a.tags:
@@ -233,7 +248,7 @@ def update_article(aid: int, u: ArticleUpdate):
 
         fields, values = [], []
         for k in ("title", "content", "author", "source", "language",
-                  "category_id", "summary", "date", "images"):
+                  "category_id", "summary", "date", "images", "starred"):
             v = getattr(u, k)
             if v is not None:
                 fields.append(f"{k} = ?")
@@ -412,6 +427,35 @@ def update_report(rid: int, u: ReportUpdate):
 def delete_report(rid: int):
     with conn_ctx() as conn:
         conn.execute("DELETE FROM reports WHERE id = ?", (rid,))
+    return {"ok": True}
+
+
+# ---------- tags ----------
+@app.get("/tags")
+def list_tags():
+    with conn_ctx() as conn:
+        rows = conn.execute(
+            """SELECT t.id, t.name, COUNT(at.article_id) AS count
+               FROM tags t
+               LEFT JOIN article_tags at ON at.tag_id = t.id
+               GROUP BY t.id ORDER BY t.name"""
+        ).fetchall()
+    return rows
+
+
+@app.patch("/tags/{tid}")
+def update_tag(tid: int, t: TagIn):
+    with conn_ctx() as conn:
+        if not conn.execute("SELECT id FROM tags WHERE id = ?", (tid,)).fetchone():
+            raise HTTPException(404, "not found")
+        conn.execute("UPDATE tags SET name = ? WHERE id = ?", (t.name, tid))
+        return conn.execute("SELECT * FROM tags WHERE id = ?", (tid,)).fetchone()
+
+
+@app.delete("/tags/{tid}")
+def delete_tag(tid: int):
+    with conn_ctx() as conn:
+        conn.execute("DELETE FROM tags WHERE id = ?", (tid,))
     return {"ok": True}
 
 
