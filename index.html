@@ -952,6 +952,130 @@ body:not(.reports-mode) .reports-only { display: none !important; }
 .welcome-title { color: var(--text-muted); }
 .welcome-sub   { color: var(--text-faint); }
 
+/* ── Dark Mode ─────────────────────────────────────────────── */
+body.dark {
+  --bg-dark: #1c1a18; --bg-darker: #111110; --bg-light: #1e1c1a;
+  --text-main: #e4ddd2; --text-muted: #9a9080; --text-faint: #6a6058;
+  --border: #38342e; --border-dark: #2a2620;
+  --sidebar-text: #e4ddd2; --sidebar-muted: #8a8070;
+  --sidebar-hover: #252320; --sidebar-active: #2e2b26;
+}
+body.dark #main { background: #1e1c1a !important; }
+body.dark .search-wrap { background: #1c1a18; }
+body.dark .form-field input[type="text"],
+body.dark .form-field input[type="date"],
+body.dark .form-field textarea,
+body.dark .form-field select { background: #252320 !important; color: var(--text-main); }
+body.dark .btn-edit, body.dark .btn-delete, body.dark .btn-star,
+body.dark .btn-duplicate, body.dark .btn-cancel { background: #252320 !important; }
+body.dark .folder-modal, body.dark .tag-manager-modal { background: #252320; }
+body.dark .folder-modal input, body.dark .tag-manager-input { background: #1c1a18 !important; color: var(--text-main); }
+body.dark .preview-pane { background: #252320; }
+body.dark .tag-row { border-bottom-color: var(--border-dark); }
+body.dark .tag-row-count { background: #2a2620; }
+body.dark .tag-manager-input { border-color: var(--border); }
+body.dark input:-webkit-autofill, body.dark input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px #1c1a18 inset !important;
+}
+
+/* ── Dark toggle btn ────────────────────────────────────────── */
+.btn-dark-toggle {
+  background: none; border: none; font-size: 15px; cursor: pointer;
+  padding: 2px 4px; border-radius: 4px; opacity: 0.55; transition: opacity 0.15s;
+  line-height: 1;
+}
+.btn-dark-toggle:hover { opacity: 1; }
+
+/* ── Sort dropdown ──────────────────────────────────────────── */
+.sort-wrap {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px 4px;
+}
+.sort-wrap .sidebar-list-label {
+  flex: 1; font-size: 10px; color: var(--sidebar-muted);
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.sort-select {
+  background: transparent; border: none; font-size: 10px;
+  font-family: 'Segoe UI', '微軟正黑體', sans-serif;
+  color: var(--sidebar-muted); cursor: pointer; outline: none;
+}
+.sort-select:hover { color: var(--sidebar-text); }
+
+/* ── Star / Duplicate buttons ───────────────────────────────── */
+.btn-star, .btn-duplicate {
+  background: white; border: 1px solid var(--border); border-radius: 6px;
+  padding: 7px 11px; font-size: 13px; cursor: pointer;
+  color: var(--text-muted); transition: all 0.12s;
+  font-family: 'Segoe UI', '微軟正黑體', sans-serif;
+}
+.btn-star.starred { color: #e8a020; border-color: #e8a020; background: rgba(232,160,32,0.06); }
+.btn-star:hover { border-color: #e8a020; color: #e8a020; }
+.btn-duplicate:hover { border-color: var(--accent); color: var(--accent-dim); }
+.li-star { color: #e8a020; }
+
+/* ── Word count ─────────────────────────────────────────────── */
+.word-count-bar {
+  font-size: 11px; color: var(--text-faint); padding: 0 0 12px; flex-shrink: 0;
+}
+
+/* ── Recent articles ─────────────────────────────────────────── */
+.recent-section { border-top: 1px solid var(--border-dark); padding: 6px 8px 2px; }
+.recent-label {
+  font-size: 10px; color: var(--sidebar-muted); letter-spacing: 0.12em;
+  text-transform: uppercase; padding: 2px 6px 3px; display: block;
+}
+.recent-item {
+  font-size: 11px; color: var(--sidebar-text); padding: 4px 8px; border-radius: 4px;
+  cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.75;
+}
+.recent-item:hover { background: var(--sidebar-hover); opacity: 1; }
+
+/* ── Tag manager ─────────────────────────────────────────────── */
+.tag-manager-modal {
+  background: white; border-radius: 12px; padding: 28px 32px; width: 480px;
+  max-height: 72vh; display: flex; flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18); animation: fadeSlide 0.18s ease forwards;
+}
+.tag-manager-list { flex: 1; overflow-y: auto; margin: 14px 0 18px; }
+.tag-manager-list::-webkit-scrollbar { width: 4px; }
+.tag-manager-list::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 2px; }
+.tag-row {
+  display: flex; align-items: center; gap: 8px; padding: 7px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.tag-row:last-child { border-bottom: none; }
+.tag-row-name { flex: 1; font-size: 13px; color: var(--text-main); }
+.tag-row-count { font-size: 10px; color: var(--sidebar-muted); background: #ede8df; padding: 1px 7px; border-radius: 10px; }
+.tag-manager-input {
+  font-family: 'Segoe UI', '微軟正黑體', sans-serif; font-size: 13px; color: var(--text-main);
+  background: white; border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px;
+  outline: none; width: 140px;
+}
+.tag-manager-input:focus { border-color: var(--accent); }
+.tag-btn-sm {
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  padding: 3px 8px; font-size: 11px; cursor: pointer; color: var(--text-muted);
+  font-family: 'Segoe UI', '微軟正黑體', sans-serif;
+}
+.tag-btn-sm:hover { border-color: var(--accent); color: var(--accent-dim); }
+.tag-btn-sm.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── Live preview ─────────────────────────────────────────────── */
+.preview-toggle {
+  background: transparent; border: 1px solid var(--border); border-radius: 4px;
+  padding: 2px 8px; font-size: 11px; color: var(--sidebar-muted); cursor: pointer;
+  font-family: 'Segoe UI', '微軟正黑體', sans-serif;
+}
+.preview-toggle.active { border-color: var(--accent-dim); color: var(--accent-dim); }
+.form-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 100%; }
+.preview-pane {
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px;
+  min-height: 240px; background: white; overflow-y: auto;
+  font-family: 'Segoe UI', '微軟正黑體', sans-serif; font-size: 14px;
+  line-height: 1.8; color: var(--text-main);
+}
+
 /* ── Folder Modal ──────────────────────────────────────────── */
 .folder-modal-overlay {
   position: fixed;
@@ -1055,6 +1179,7 @@ input:-webkit-autofill:focus {
       <div class="brand-title" id="brand-title">文章資料庫</div>
       <div class="brand-sub" id="brand-sub">Article Archive</div>
     </div>
+    <button class="btn-dark-toggle" id="dark-toggle" onclick="toggleDarkMode()" title="深色／淺色模式">🌙</button>
   </div>
 
   <div class="mode-switcher">
@@ -1075,10 +1200,21 @@ input:-webkit-autofill:focus {
       <button class="btn-new-folder" onclick="addFolder()">＋ 新增資料夾</button>
     </div>
     <div class="folder-tabs" id="folder-tabs"></div>
-    <div class="sidebar-list-header">
-      <span id="list-header-label">所有文章</span> <span class="count-chip" id="count-chip">0</span>
+    <div class="sort-wrap">
+      <span class="sidebar-list-label" id="list-header-label">所有文章</span>
+      <select class="sort-select" id="sort-select" onchange="renderList()">
+        <option value="newest">最新</option>
+        <option value="oldest">最舊</option>
+        <option value="title">標題 A-Z</option>
+        <option value="author">作者 A-Z</option>
+      </select>
+      <span class="count-chip" id="count-chip">0</span>
     </div>
     <div id="article-list" style="flex:1;overflow-y:auto;padding:0 8px 16px;"></div>
+    <div class="recent-section" id="recent-section" style="display:none">
+      <span class="recent-label">最近閱讀</span>
+      <div id="recent-list"></div>
+    </div>
   </div>
 
   <!-- ── 公司報告區塊 ── -->
@@ -1099,8 +1235,13 @@ input:-webkit-autofill:focus {
     <div id="report-list" style="flex:1;overflow-y:auto;padding:0 8px 16px;"></div>
   </div>
 
-  <div class="sidebar-footer">
-    <button class="btn-export articles-only" onclick="exportCSV()">↓ 匯出文章 CSV</button>
+  <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:5px;">
+    <div class="articles-only" style="display:flex;gap:5px;">
+      <button class="btn-export" style="flex:1" onclick="exportJSON()">↓ 備份 JSON</button>
+      <button class="btn-export" style="flex:1" onclick="importJSON()">↑ 還原 JSON</button>
+    </div>
+    <button class="btn-export articles-only" onclick="exportCSV()">↓ 匯出 CSV</button>
+    <button class="btn-export articles-only" style="color:var(--accent-dim);border-color:var(--accent-dim)" onclick="openTagManager()">🏷 管理標籤</button>
     <button class="btn-export reports-only" onclick="exportReportsCSV()">↓ 匯出報告 CSV</button>
   </div>
 </div>
@@ -1120,7 +1261,10 @@ input:-webkit-autofill:focus {
       <div class="article-toolbar">
         <button class="btn-edit" onclick="showForm(currentId)">✎ 編輯</button>
         <button class="btn-delete" onclick="deleteArticle(currentId)">✕ 刪除</button>
+        <button class="btn-star" id="btn-star" onclick="toggleStar(currentId)">☆ 收藏</button>
+        <button class="btn-duplicate" onclick="duplicateArticle(currentId)">⎘ 複製</button>
       </div>
+      <div class="word-count-bar" id="word-count-bar"></div>
       <div class="article-meta-bar">
         <div class="meta-item">
           <span class="meta-label">資料夾</span>
@@ -1193,9 +1337,14 @@ input:-webkit-autofill:focus {
         <div id="form-image-previews" class="image-thumb-grid"></div>
       </div>
 
-      <div class="form-field">
-        <label class="form-label">文章內容</label>
-        <textarea id="f-content" placeholder="在此輸入文章內容…"></textarea>
+      <div class="form-field" id="content-field">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <label class="form-label" style="margin-bottom:0">文章內容</label>
+          <button type="button" class="preview-toggle" id="preview-toggle" onclick="togglePreview()">👁 預覽</button>
+        </div>
+        <div id="content-wrap">
+          <textarea id="f-content" placeholder="在此輸入文章內容…"></textarea>
+        </div>
       </div>
       
       <div class="form-actions">
@@ -1329,6 +1478,20 @@ input:-webkit-autofill:focus {
   </div>
 </div>
 
+<!-- ── Tag Manager Modal ─────────────────────────────────────── -->
+<div class="folder-modal-overlay" id="tag-manager-overlay">
+  <div class="tag-manager-modal">
+    <div class="folder-modal-title">管理標籤</div>
+    <div class="tag-manager-list" id="tag-manager-list"></div>
+    <div class="folder-modal-actions">
+      <button class="btn-cancel" onclick="closeTagManager()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── JSON import helper ────────────────────────────────────── -->
+<input type="file" id="json-import-input" accept=".json" style="display:none">
+
 <!-- ── Lightbox ───────────────────────────────────────────────── -->
 <div class="lightbox" id="lightbox">
   <button class="lb-close" onclick="closeLightbox(event)" title="關閉 (Esc)">✕</button>
@@ -1354,7 +1517,8 @@ function _apiToArticle(r) {
     author: r.author || '', date: r.date || '', source: r.source || '',
     folder: r.category_name || '',
     images: _parseImages(r.images), image: '',
-    tags: r.tags || []
+    tags: r.tags || [],
+    starred: r.starred || 0
   };
 }
 
@@ -1526,6 +1690,15 @@ function renderFolders() {
       <span class="folder-tab-count">${uncatCount}</span>
     </div>`;
   }
+  const starredCount = articles.filter(a => a.starred).length;
+  if (starredCount > 0) {
+    html += `
+    <div class="folder-tab ${currentFolder === '__starred__' ? 'active' : ''}" data-folder="__starred__">
+      <span class="folder-tab-icon">⭐</span>
+      <span class="folder-tab-name">收藏</span>
+      <span class="folder-tab-count">${starredCount}</span>
+    </div>`;
+  }
 
   container.innerHTML = html;
 
@@ -1544,7 +1717,8 @@ function renderFolders() {
 
 function selectFolder(name) {
   currentFolder = name;
-  const labels = { '': '所有文章', '__uncat__': '未分類' };
+  currentTag = '';
+  const labels = { '': '所有文章', '__uncat__': '未分類', '__starred__': '收藏' };
   document.getElementById('list-header-label').textContent = labels[name] ?? name;
   renderList();
 }
@@ -1638,11 +1812,19 @@ function renderList() {
       (a.content||'').toLowerCase().includes(q) ||
       (a.tags||[]).some(t => t.toLowerCase().includes(q));
     let matchFolder;
-    if (currentFolder === '')          matchFolder = true;
+    if (currentFolder === '')               matchFolder = true;
     else if (currentFolder === '__uncat__') matchFolder = !a.folder;
-    else                               matchFolder = a.folder === currentFolder;
-    return matchSearch && matchFolder;
+    else if (currentFolder === '__starred__') matchFolder = !!a.starred;
+    else                                    matchFolder = a.folder === currentFolder;
+    const matchTag = !currentTag || (a.tags||[]).includes(currentTag);
+    return matchSearch && matchFolder && matchTag;
   });
+
+  const sortMode = document.getElementById('sort-select')?.value || 'newest';
+  let toRender = filtered.slice();
+  if      (sortMode === 'oldest') toRender.reverse();
+  else if (sortMode === 'title')  toRender.sort((a,b) => a.title.localeCompare(b.title, 'zh'));
+  else if (sortMode === 'author') toRender.sort((a,b) => (a.author||'').localeCompare(b.author||'', 'zh'));
 
   chip.textContent = filtered.length;
 
@@ -1651,15 +1833,17 @@ function renderList() {
     return;
   }
 
-  list.innerHTML = filtered.slice().reverse().map(a => `
+  list.innerHTML = toRender.map(a => `
     <div class="list-item ${a.id === currentId ? 'active' : ''}" onclick="viewArticle(${a.id})">
-      <div class="li-title">${esc(a.title)}</div>
+      <div class="li-title">
+        ${a.starred ? '<span class="li-star">★</span> ' : ''}${esc(a.title)}
+      </div>
       <div class="li-meta">
         ${a.folder ? `<span class="folder-tag">${esc(a.folder)}</span>` : ''}
-        <span class="li-author">${esc(a.author || '未知作者')}</span>
+        <span>${esc(a.author || '未知作者')}</span>
         <span>${a.date || ''}</span>
       </div>
-      ${(a.tags||[]).length ? `<div class="li-meta" style="margin-top:3px;">${(a.tags).map(t=>`<span class="li-kw-chip">${esc(t)}</span>`).join('')}</div>` : ''}
+      ${(a.tags||[]).length ? `<div class="li-meta" style="margin-top:3px;">${a.tags.map(t=>`<span class="li-kw-chip" onclick="event.stopPropagation();filterByTag('${esc(t)}')" style="cursor:pointer">${esc(t)}</span>`).join('')}</div>` : ''}
     </div>
   `).join('');
 }
@@ -1682,6 +1866,15 @@ function viewArticle(id) {
   document.getElementById('view-author').textContent = a.author || '—';
   document.getElementById('view-date').textContent   = a.date   || '—';
 
+  const btn = document.getElementById('btn-star');
+  if (btn) { btn.classList.toggle('starred', !!a.starred); btn.textContent = a.starred ? '★ 已收藏' : '☆ 收藏'; }
+
+  const chars = (a.content || '').replace(/\s/g, '').length;
+  const wcEl  = document.getElementById('word-count-bar');
+  if (wcEl) wcEl.textContent = chars > 0 ? `${chars.toLocaleString()} 字 · 約 ${Math.ceil(chars / 300)} 分鐘閱讀` : '';
+
+  addToRecent(id);
+
   const srcEl = document.getElementById('view-source');
   const src = a.source || '';
   if (src.startsWith('http')) {
@@ -1693,7 +1886,7 @@ function viewArticle(id) {
   const kwItem = document.getElementById('view-keywords-item');
   const kwEl   = document.getElementById('view-keywords');
   if ((a.tags||[]).length) {
-    kwEl.innerHTML = a.tags.map(t => `<span class="kw-chip">${esc(t)}</span>`).join('');
+    kwEl.innerHTML = a.tags.map(t => `<span class="kw-chip" onclick="filterByTag('${esc(t)}')" style="cursor:pointer" title="篩選此標籤">${esc(t)}</span>`).join('');
     kwItem.style.display = '';
   } else {
     kwItem.style.display = 'none';
@@ -1737,6 +1930,9 @@ function showForm(id) {
   form.classList.add('animate-in');
 
   document.getElementById('f-image').value = '';
+
+  // reset live preview if open
+  if (previewOn) togglePreview();
 
   if (id) {
     const a = articles.find(x => x.id === id);
@@ -2291,6 +2487,190 @@ document.addEventListener('keydown', e => {
   resizer.addEventListener('dblclick', onDoubleClick);
 })();
 
+// ── Dark mode ─────────────────────────────────────────────────
+let darkMode = localStorage.getItem('darkMode') === '1';
+function toggleDarkMode() {
+  darkMode = !darkMode;
+  document.body.classList.toggle('dark', darkMode);
+  document.getElementById('dark-toggle').textContent = darkMode ? '☀️' : '🌙';
+  localStorage.setItem('darkMode', darkMode ? '1' : '0');
+}
+if (darkMode) {
+  document.body.classList.add('dark');
+  document.getElementById('dark-toggle').textContent = '☀️';
+}
+
+// ── Tag filter ─────────────────────────────────────────────────
+let currentTag = '';
+function filterByTag(tag) {
+  currentTag = (currentTag === tag) ? '' : tag;
+  document.getElementById('list-header-label').textContent =
+    currentTag ? `#${currentTag}` : (currentFolder === '' ? '所有文章' : (currentFolder === '__uncat__' ? '未分類' : (currentFolder === '__starred__' ? '收藏' : currentFolder)));
+  renderList();
+}
+
+// ── Star / favourite ──────────────────────────────────────────
+async function toggleStar(id) {
+  const a = articles.find(x => x.id === id);
+  if (!a) return;
+  const newVal = a.starred ? 0 : 1;
+  await _apiPatch(`/articles/${id}`, { starred: newVal });
+  a.starred = newVal;
+  const btn = document.getElementById('btn-star');
+  if (btn) { btn.classList.toggle('starred', !!newVal); btn.textContent = newVal ? '★ 已收藏' : '☆ 收藏'; }
+  renderList();
+}
+
+// ── Duplicate article ─────────────────────────────────────────
+async function duplicateArticle(id) {
+  const a = articles.find(x => x.id === id);
+  if (!a) return;
+  if (a.folder && !folders.includes(a.folder)) await _apiCreateFolder(a.folder);
+  const res = await _apiPost('/articles', {
+    title: `${a.title}（複製）`, content: a.content || '',
+    author: a.author || null, source: a.source || null, language: 'zh',
+    category_id: folderCatMap[a.folder] || null, date: a.date || null,
+    images: JSON.stringify(a.images || []), tags: a.tags || [], starred: 0
+  });
+  const newArt = _apiToArticle({ ...res, tags: a.tags || [] });
+  articles.unshift(newArt);
+  toast('文章已複製');
+  viewArticle(res.id);
+  renderList();
+}
+
+// ── Recent articles ───────────────────────────────────────────
+const RECENT_KEY = 'recent_articles';
+function addToRecent(id) {
+  let r = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+  r = [id, ...r.filter(x => x !== id)].slice(0, 5);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(r));
+  renderRecent();
+}
+function renderRecent() {
+  const section = document.getElementById('recent-section');
+  const list = document.getElementById('recent-list');
+  if (!section || !list) return;
+  const ids = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]').filter(id => articles.find(a => a.id === id));
+  if (!ids.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  list.innerHTML = ids.map(id => {
+    const a = articles.find(x => x.id === id);
+    return `<div class="recent-item" onclick="viewArticle(${id})">${esc(a.title)}</div>`;
+  }).join('');
+}
+
+// ── Tag manager ───────────────────────────────────────────────
+async function openTagManager() {
+  await renderTagManager();
+  document.getElementById('tag-manager-overlay').classList.add('show');
+}
+function closeTagManager() {
+  document.getElementById('tag-manager-overlay').classList.remove('show');
+}
+async function renderTagManager() {
+  const list = document.getElementById('tag-manager-list');
+  let tags = [];
+  try { tags = await fetch(`${API_BASE}/tags`).then(r => r.json()); } catch(e) {}
+  if (!tags.length) {
+    list.innerHTML = '<div style="color:var(--text-faint);font-size:13px;padding:8px 4px;">尚無標籤</div>';
+    return;
+  }
+  list.innerHTML = tags.map(t => `
+    <div class="tag-row">
+      <input class="tag-manager-input" id="tag-input-${t.id}" value="${esc(t.name)}">
+      <span class="tag-row-count">${t.count} 篇</span>
+      <button class="tag-btn-sm" onclick="saveTagName(${t.id}, '${esc(t.name)}')">儲存</button>
+      <button class="tag-btn-sm danger" onclick="deleteTagById(${t.id}, '${esc(t.name)}')">✕</button>
+    </div>`).join('');
+}
+async function saveTagName(tid, oldName) {
+  const newName = document.getElementById(`tag-input-${tid}`).value.trim();
+  if (!newName || newName === oldName) return;
+  await _apiPatch(`/tags/${tid}`, { name: newName });
+  articles.forEach(a => { const i = (a.tags||[]).indexOf(oldName); if (i >= 0) a.tags[i] = newName; });
+  toast('標籤已更新'); renderList(); await renderTagManager();
+}
+async function deleteTagById(tid, name) {
+  if (!confirm(`確定要刪除標籤「${name}」嗎？`)) return;
+  await _apiDelete(`/tags/${tid}`);
+  articles.forEach(a => { a.tags = (a.tags||[]).filter(t => t !== name); });
+  toast('標籤已刪除'); renderList(); await renderTagManager();
+}
+document.getElementById('tag-manager-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeTagManager();
+});
+
+// ── Live preview ──────────────────────────────────────────────
+let previewOn = false;
+function togglePreview() {
+  previewOn = !previewOn;
+  const btn  = document.getElementById('preview-toggle');
+  const wrap = document.getElementById('content-wrap');
+  const ta   = document.getElementById('f-content');
+  const field = document.getElementById('content-field');
+  btn.classList.toggle('active', previewOn);
+  if (previewOn) {
+    wrap.className = 'form-split';
+    field.style.maxWidth = 'none';
+    const pane = document.createElement('div');
+    pane.className = 'preview-pane article-content-display';
+    pane.id = 'preview-pane';
+    pane.innerHTML = marked.parse(ta.value || '');
+    wrap.appendChild(pane);
+    ta.addEventListener('input', updatePreview);
+  } else {
+    wrap.className = '';
+    field.style.maxWidth = '680px';
+    const pane = document.getElementById('preview-pane');
+    if (pane) pane.remove();
+    ta.removeEventListener('input', updatePreview);
+  }
+}
+function updatePreview() {
+  const pane = document.getElementById('preview-pane');
+  if (pane) pane.innerHTML = marked.parse(document.getElementById('f-content').value || '');
+}
+
+// ── Backup / Restore JSON ─────────────────────────────────────
+function exportJSON() {
+  if (!articles.length) { toast('尚無文章可備份'); return; }
+  const blob = new Blob([JSON.stringify({ version: 1, exported: new Date().toISOString(), articles }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `文章備份_${new Date().toISOString().slice(0,10)}.json`; a.click();
+  URL.revokeObjectURL(url);
+  toast('備份完成');
+}
+function importJSON() { document.getElementById('json-import-input').click(); }
+document.getElementById('json-import-input').addEventListener('change', async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    const arts = data.articles || data;
+    if (!Array.isArray(arts)) { toast('JSON 格式不正確'); return; }
+    toast(`匯入 ${arts.length} 篇文章中…`);
+    let count = 0;
+    for (const a of arts) {
+      const folder = a.folder || '';
+      if (folder && !folders.includes(folder)) await _apiCreateFolder(folder);
+      const res = await _apiPost('/articles', {
+        title: a.title || '未命名', content: a.content || '',
+        author: a.author || null, source: a.source || null, language: 'zh',
+        category_id: folderCatMap[folder] || null, date: a.date || null,
+        images: JSON.stringify(a.images || []), tags: a.tags || [], starred: a.starred || 0
+      });
+      articles.unshift(_apiToArticle({ ...res, tags: a.tags || [] }));
+      count++;
+    }
+    toast(`已匯入 ${count} 篇文章`);
+    renderFolders(); renderList();
+    if (articles.length) viewArticle(articles[0].id);
+  } catch(err) { toast('匯入失敗：' + err.message); }
+  e.target.value = '';
+});
+
 async function initData() {
   const sub = document.querySelector('.welcome-sub');
   if (sub) sub.textContent = '載入資料中…';
@@ -2316,6 +2696,7 @@ async function initData() {
 
     renderList();
     renderReportList();
+    renderRecent();
 
     if (articles.length) viewArticle(articles[0].id);
     else {
