@@ -51,26 +51,37 @@ body {
 }
 /* ── Sidebar resizer ───────────────────────────────────────── */
 #sidebar-resizer {
-  flex: 0 0 5px;
-  width: 5px;
+  flex: 0 0 8px;
+  width: 8px;
   cursor: col-resize;
   background: transparent;
   position: relative;
   z-index: 10;
-  transition: background 0.15s ease;
   user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 #sidebar-resizer::before {
   content: '';
   position: absolute;
-  left: -2px;
-  right: -2px;
+  left: -3px;
+  right: -3px;
   top: 0;
   bottom: 0;
 }
-#sidebar-resizer:hover,
-#sidebar-resizer.dragging {
-  background: var(--accent-dim);
+#sidebar-resizer::after {
+  content: '';
+  width: 2px;
+  height: 100%;
+  background: var(--border-dark);
+  transition: background 0.15s ease, width 0.15s ease;
+  border-radius: 1px;
+}
+#sidebar-resizer:hover::after,
+#sidebar-resizer.dragging::after {
+  background: var(--accent);
+  width: 3px;
 }
 body.resizing { cursor: col-resize !important; user-select: none; }
 body.resizing * { cursor: col-resize !important; user-select: none !important; }
@@ -977,6 +988,19 @@ body.dark .tag-manager-input { border-color: var(--border); }
 body.dark input:-webkit-autofill, body.dark input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 30px #1c1a18 inset !important;
 }
+/* 文章 / 報告內文 dark mode 字色 */
+body.dark .article-content-display,
+body.dark .report-content-display { color: var(--text-main); }
+body.dark .article-content-display code,
+body.dark .report-content-display code { background: #2a2620; color: #d4a870; }
+body.dark .article-content-display pre,
+body.dark .report-content-display pre { background: #252320; }
+body.dark .article-content-display pre code,
+body.dark .report-content-display pre code { color: #c8b89a; }
+body.dark .article-content-display th,
+body.dark .report-content-display th { background: #252320; color: var(--text-main); }
+body.dark .article-content-display tr:hover td,
+body.dark .report-content-display tr:hover td { background: rgba(255,255,255,0.04); }
 
 /* ── Dark toggle btn ────────────────────────────────────────── */
 .btn-dark-toggle {
