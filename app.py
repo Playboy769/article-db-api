@@ -16,6 +16,18 @@ async def lifespan(app: FastAPI):
     with conn_ctx() as conn:
         for stmt in [
             "ALTER TABLE articles ADD COLUMN starred INTEGER DEFAULT 0",
+            # links table (for databases created before links feature)
+            """CREATE TABLE IF NOT EXISTS links (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                title      TEXT NOT NULL,
+                url        TEXT NOT NULL,
+                desc       TEXT,
+                folder     TEXT DEFAULT '',
+                icon       TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
+            )""",
+            "CREATE INDEX IF NOT EXISTS links_folder_idx  ON links(folder)",
+            "CREATE INDEX IF NOT EXISTS links_created_idx ON links(created_at)",
         ]:
             try:
                 conn.execute(stmt)
@@ -96,6 +108,22 @@ class ReportUpdate(BaseModel):
     source: Optional[str] = None
     content: Optional[str] = None
     images: Optional[str] = None
+
+
+class LinkIn(BaseModel):
+    title: str
+    url: str
+    desc: Optional[str] = None
+    folder: str = ""
+    icon: Optional[str] = None
+
+
+class LinkUpdate(BaseModel):
+    title: Optional[str] = None
+    url: Optional[str] = None
+    desc: Optional[str] = None
+    folder: Optional[str] = None
+    icon: Optional[str] = None
 
 
 # ---------- helpers ----------
@@ -461,4 +489,57 @@ def delete_tag(tid: int):
 
 @app.get("/healthz")
 def health():
+    return {"ok": True}
+
+
+# ---------- links CRUD ----------
+@app.post("/links")
+def create_link(lk: LinkIn):
+    with conn_ctx() as conn:
+        cur = conn.execute(
+            "INSERT INTO links (title, url, desc, folder, icon) VALUES (?, ?, ?, ?, ?)",
+            (lk.title, lk.url, lk.desc, lk.folder, lk.icon),
+        )
+        return conn.execute("SELECT * FROM links WHERE id = ?", (cur.lastrowid,)).fetchone()
+
+
+@app.get("/links")
+def list_links(
+    folder: Optional[str] = None,
+    limit: int = Query(500, le=1000),
+    offset: int = 0,
+):
+    where, params = [], []
+    if folder is not None:
+        where.append("folder = ?"); params.append(folder)
+    sql = "SELECT * FROM links"
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    params += [limit, offset]
+    with conn_ctx() as conn:
+        return conn.execute(sql, params).fetchall()
+
+
+@app.patch("/links/{lid}")
+def update_link(lid: int, lk: LinkUpdate):
+    with conn_ctx() as conn:
+        if not conn.execute("SELECT id FROM links WHERE id = ?", (lid,)).fetchone():
+            raise HTTPException(404, "not found")
+        fields, values = [], []
+        for k in ("title", "url", "desc", "folder", "icon"):
+            v = getattr(lk, k)
+            if v is not None:
+                fields.append(f"{k} = ?")
+                values.append(v)
+        if fields:
+            values.append(lid)
+            conn.execute(f"UPDATE links SET {', '.join(fields)} WHERE id = ?", values)
+        return conn.execute("SELECT * FROM links WHERE id = ?", (lid,)).fetchone()
+
+
+@app.delete("/links/{lid}")
+def delete_link_api(lid: int):
+    with conn_ctx() as conn:
+        conn.execute("DELETE FROM links WHERE id = ?", (lid,))
     return {"ok": True}

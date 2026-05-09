@@ -90,3 +90,17 @@ AFTER UPDATE OF company, ticker, sector, rating, target, date, analyst, source, 
 FOR EACH ROW BEGIN
     UPDATE reports SET updated_at = datetime('now') WHERE id = old.id;
 END;
+
+-- ── 連結資料庫 ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS links (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    title      TEXT NOT NULL,
+    url        TEXT NOT NULL,
+    desc       TEXT,
+    folder     TEXT DEFAULT '',
+    icon       TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS links_folder_idx  ON links(folder);
+CREATE INDEX IF NOT EXISTS links_created_idx ON links(created_at);
