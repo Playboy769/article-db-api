@@ -1,3 +1,6 @@
+import html as html_mod
+import re
+import urllib.request
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
@@ -543,3 +546,24 @@ def delete_link_api(lid: int):
     with conn_ctx() as conn:
         conn.execute("DELETE FROM links WHERE id = ?", (lid,))
     return {"ok": True}
+
+
+# ---------- URL fetch (proxy) ----------
+@app.get("/fetch-url")
+def fetch_url_endpoint(url: str):
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible)"})
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        raise HTTPException(400, f"無法抓取：{e}")
+    title_m = re.search(r"<title[^>]*>(.*?)</title>", raw, re.I | re.S)
+    title = html_mod.unescape(title_m.group(1).strip()) if title_m else ""
+    clean = re.sub(
+        r"<(script|style|nav|header|footer|aside|form|button)[^>]*>.*?</\1>",
+        "", raw, flags=re.I | re.S
+    )
+    clean = re.sub(r"<[^>]+>", " ", clean)
+    clean = html_mod.unescape(re.sub(r"[ \t]+", " ", clean).strip())
+    clean = "\n".join(line.strip() for line in clean.splitlines() if line.strip())
+    return {"title": title, "content": clean[:8000]}
