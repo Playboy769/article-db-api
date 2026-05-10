@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS articles (
     summary     TEXT,
     date        TEXT,
     images      TEXT DEFAULT '[]',
+    starred     INTEGER DEFAULT 0,
+    highlights  TEXT DEFAULT '[]',
+    notes       TEXT DEFAULT '[]',
     category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
     created_at  TEXT DEFAULT (datetime('now')),
     updated_at  TEXT DEFAULT (datetime('now'))

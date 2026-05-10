@@ -19,6 +19,8 @@ async def lifespan(app: FastAPI):
     with conn_ctx() as conn:
         for stmt in [
             "ALTER TABLE articles ADD COLUMN starred INTEGER DEFAULT 0",
+            "ALTER TABLE articles ADD COLUMN highlights TEXT DEFAULT '[]'",
+            "ALTER TABLE articles ADD COLUMN notes TEXT DEFAULT '[]'",
             # links table (for databases created before links feature)
             """CREATE TABLE IF NOT EXISTS links (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,6 +64,8 @@ class ArticleIn(BaseModel):
     date: Optional[str] = None
     images: str = "[]"
     starred: int = 0
+    highlights: str = "[]"
+    notes: str = "[]"
 
 
 class ArticleUpdate(BaseModel):
@@ -76,6 +80,8 @@ class ArticleUpdate(BaseModel):
     date: Optional[str] = None
     images: Optional[str] = None
     starred: Optional[int] = None
+    highlights: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class TagIn(BaseModel):
@@ -250,10 +256,10 @@ def create_article(a: ArticleIn):
     with conn_ctx() as conn:
         cur = conn.execute(
             """INSERT INTO articles
-               (title, content, author, source, language, category_id, summary, date, images, starred)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (title, content, author, source, language, category_id, summary, date, images, starred, highlights, notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (a.title, a.content, a.author, a.source, a.language,
-             a.category_id, a.summary, a.date, a.images, a.starred),
+             a.category_id, a.summary, a.date, a.images, a.starred, a.highlights, a.notes),
         )
         aid = cur.lastrowid
         if a.tags:
@@ -279,7 +285,8 @@ def update_article(aid: int, u: ArticleUpdate):
 
         fields, values = [], []
         for k in ("title", "content", "author", "source", "language",
-                  "category_id", "summary", "date", "images", "starred"):
+                  "category_id", "summary", "date", "images", "starred",
+                  "highlights", "notes"):
             v = getattr(u, k)
             if v is not None:
                 fields.append(f"{k} = ?")
@@ -331,7 +338,8 @@ def list_articles(
 
     sql = """
         SELECT a.id, a.title, a.content, a.author, a.source, a.language, a.summary,
-               a.date, a.images, a.category_id,
+               a.date, a.images, a.category_id, a.starred,
+               a.highlights, a.notes,
                c.name AS category_name, a.created_at, a.updated_at
         FROM articles a
         LEFT JOIN categories c ON c.id = a.category_id
