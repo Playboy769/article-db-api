@@ -21,6 +21,9 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE articles ADD COLUMN starred INTEGER DEFAULT 0",
             "ALTER TABLE articles ADD COLUMN highlights TEXT DEFAULT '[]'",
             "ALTER TABLE articles ADD COLUMN notes TEXT DEFAULT '[]'",
+            "ALTER TABLE reports ADD COLUMN starred INTEGER DEFAULT 0",
+            "ALTER TABLE reports ADD COLUMN highlights TEXT DEFAULT '[]'",
+            "ALTER TABLE reports ADD COLUMN notes TEXT DEFAULT '[]'",
             # links table (for databases created before links feature)
             """CREATE TABLE IF NOT EXISTS links (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,6 +107,9 @@ class ReportIn(BaseModel):
     source: Optional[str] = None
     content: str = ""
     images: str = "[]"
+    starred: int = 0
+    highlights: str = "[]"
+    notes: str = "[]"
 
 
 class ReportUpdate(BaseModel):
@@ -117,6 +123,9 @@ class ReportUpdate(BaseModel):
     source: Optional[str] = None
     content: Optional[str] = None
     images: Optional[str] = None
+    starred: Optional[int] = None
+    highlights: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class LinkIn(BaseModel):
@@ -407,10 +416,12 @@ def create_report(r: ReportIn):
     with conn_ctx() as conn:
         cur = conn.execute(
             """INSERT INTO reports
-               (company, ticker, sector, rating, target, date, analyst, source, content, images)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (company, ticker, sector, rating, target, date, analyst, source, content, images,
+                starred, highlights, notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (r.company, r.ticker, r.sector, r.rating, r.target,
-             r.date, r.analyst, r.source, r.content, r.images),
+             r.date, r.analyst, r.source, r.content, r.images,
+             r.starred, r.highlights, r.notes),
         )
         return conn.execute(
             "SELECT * FROM reports WHERE id = ?", (cur.lastrowid,)
@@ -451,7 +462,8 @@ def update_report(rid: int, u: ReportUpdate):
             raise HTTPException(404, "not found")
         fields, values = [], []
         for k in ("company", "ticker", "sector", "rating", "target",
-                  "date", "analyst", "source", "content", "images"):
+                  "date", "analyst", "source", "content", "images",
+                  "starred", "highlights", "notes"):
             v = getattr(u, k)
             if v is not None:
                 fields.append(f"{k} = ?")
