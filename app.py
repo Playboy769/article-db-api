@@ -1,3 +1,4 @@
+# deploy marker: reports cloud-sync (highlights/notes/starred) — 2026-05-17
 import html as html_mod
 import re
 import urllib.request
