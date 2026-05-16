@@ -374,7 +374,7 @@ def _call_gemini(prompt: str) -> dict:
         with urllib.request.urlopen(req, timeout=60) as resp:
             raw = resp.read().decode("utf-8")
     except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", "replace")[:300]
+        detail = e.read().decode("utf-8", "replace")[:900]
         raise HTTPException(502, f"Gemini API 錯誤 {e.code}：{detail}")
     except Exception as e:
         raise HTTPException(502, f"無法連線 Gemini API：{e}")
