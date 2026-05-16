@@ -1,10 +1,16 @@
-# deploy marker: reports cloud-sync (highlights/notes/starred) — 2026-05-17
+# deploy marker: CLD (causal loop diagram) AI generation — 2026-05-17
 import html as html_mod
+import json as json_lib
+import os
 import re
+import urllib.error
 import urllib.request
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +28,7 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE articles ADD COLUMN starred INTEGER DEFAULT 0",
             "ALTER TABLE articles ADD COLUMN highlights TEXT DEFAULT '[]'",
             "ALTER TABLE articles ADD COLUMN notes TEXT DEFAULT '[]'",
+            "ALTER TABLE articles ADD COLUMN cld TEXT DEFAULT ''",
             "ALTER TABLE reports ADD COLUMN starred INTEGER DEFAULT 0",
             "ALTER TABLE reports ADD COLUMN highlights TEXT DEFAULT '[]'",
             "ALTER TABLE reports ADD COLUMN notes TEXT DEFAULT '[]'",
@@ -70,6 +77,7 @@ class ArticleIn(BaseModel):
     starred: int = 0
     highlights: str = "[]"
     notes: str = "[]"
+    cld: str = ""
 
 
 class ArticleUpdate(BaseModel):
@@ -86,6 +94,7 @@ class ArticleUpdate(BaseModel):
     starred: Optional[int] = None
     highlights: Optional[str] = None
     notes: Optional[str] = None
+    cld: Optional[str] = None
 
 
 class TagIn(BaseModel):
@@ -266,10 +275,10 @@ def create_article(a: ArticleIn):
     with conn_ctx() as conn:
         cur = conn.execute(
             """INSERT INTO articles
-               (title, content, author, source, language, category_id, summary, date, images, starred, highlights, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (title, content, author, source, language, category_id, summary, date, images, starred, highlights, notes, cld)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (a.title, a.content, a.author, a.source, a.language,
-             a.category_id, a.summary, a.date, a.images, a.starred, a.highlights, a.notes),
+             a.category_id, a.summary, a.date, a.images, a.starred, a.highlights, a.notes, a.cld),
         )
         aid = cur.lastrowid
         if a.tags:
@@ -296,7 +305,7 @@ def update_article(aid: int, u: ArticleUpdate):
         fields, values = [], []
         for k in ("title", "content", "author", "source", "language",
                   "category_id", "summary", "date", "images", "starred",
-                  "highlights", "notes"):
+                  "highlights", "notes", "cld"):
             v = getattr(u, k)
             if v is not None:
                 fields.append(f"{k} = ?")
@@ -317,6 +326,87 @@ def delete_article(aid: int):
     with conn_ctx() as conn:
         conn.execute("DELETE FROM articles WHERE id = ?", (aid,))
     return {"ok": True}
+
+
+# ---------- 因果循環圖 (CLD) AI 生成 ----------
+_CLD_PROMPT = """你是系統動力學（System Dynamics）專家。請分析以下文章，萃取出一張「因果循環圖」(Causal Loop Diagram)。
+
+規則：
+- 找出文章核心的關鍵變數／概念，6 到 12 個，作為節點（node）。節點名稱要簡短（2-8 字）。
+- 找出變數之間的因果關係，作為有方向的連結（edge）。
+- 每個連結標註極性 polarity：「+」表示同向（原因增加→結果也增加），「-」表示反向（原因增加→結果減少）。
+- 盡量讓連結形成回饋迴路。若辨識出迴路，放進 loops：type「R」為增強迴路、「B」為調節迴路，label 給一個簡短的迴路名稱。
+- 全部使用繁體中文。
+
+只回傳 JSON，不要任何其他文字，格式必須是：
+{
+  "nodes": [{"id": "n1", "label": "概念名稱"}],
+  "edges": [{"from": "n1", "to": "n2", "polarity": "+"}],
+  "loops": [{"type": "R", "label": "迴路名稱", "nodes": ["n1", "n2", "n3"]}]
+}
+
+文章標題：%(title)s
+
+文章內容：
+%(content)s
+"""
+
+
+def _call_gemini(prompt: str) -> dict:
+    if not GEMINI_API_KEY:
+        raise HTTPException(500, "伺服器未設定 GEMINI_API_KEY，請在 Railway 環境變數加入")
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    )
+    body = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "temperature": 0.4,
+        },
+    }
+    data = json_lib.dumps(body).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=data, headers={"Content-Type": "application/json"}, method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            raw = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", "replace")[:300]
+        raise HTTPException(502, f"Gemini API 錯誤 {e.code}：{detail}")
+    except Exception as e:
+        raise HTTPException(502, f"無法連線 Gemini API：{e}")
+    try:
+        parsed = json_lib.loads(raw)
+        text = parsed["candidates"][0]["content"]["parts"][0]["text"]
+        return json_lib.loads(text)
+    except Exception as e:
+        raise HTTPException(502, f"Gemini 回應格式異常：{e}")
+
+
+@app.post("/articles/{aid}/generate-cld")
+def generate_cld(aid: int):
+    with conn_ctx() as conn:
+        row = conn.execute(
+            "SELECT title, content FROM articles WHERE id = ?", (aid,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "not found")
+        title = row["title"] or ""
+        content = (row["content"] or "")[:12000]
+        if len(content.strip()) < 30:
+            raise HTTPException(400, "文章內容太短，無法生成因果圖")
+        prompt = _CLD_PROMPT % {"title": title, "content": content}
+        cld = _call_gemini(prompt)
+        # 基本結構驗證
+        if not isinstance(cld, dict) or "nodes" not in cld or "edges" not in cld:
+            raise HTTPException(502, "Gemini 回傳的因果圖結構不完整")
+        cld.setdefault("loops", [])
+        cld_json = json_lib.dumps(cld, ensure_ascii=False)
+        conn.execute("UPDATE articles SET cld = ? WHERE id = ?", (cld_json, aid))
+        return cld
 
 
 # ---------- articles list ----------
@@ -349,7 +439,7 @@ def list_articles(
     sql = """
         SELECT a.id, a.title, a.content, a.author, a.source, a.language, a.summary,
                a.date, a.images, a.category_id, a.starred,
-               a.highlights, a.notes,
+               a.highlights, a.notes, a.cld,
                c.name AS category_name, a.created_at, a.updated_at
         FROM articles a
         LEFT JOIN categories c ON c.id = a.category_id
