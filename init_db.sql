@@ -109,5 +109,23 @@ CREATE TABLE IF NOT EXISTS links (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- ── PDF 資料庫 ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS pdfs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT NOT NULL,
+    author      TEXT,
+    date        TEXT,
+    source      TEXT,
+    data        TEXT NOT NULL,
+    highlights  TEXT DEFAULT '[]',
+    notes       TEXT DEFAULT '[]',
+    starred     INTEGER DEFAULT 0,
+    category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+    created_at  TEXT DEFAULT (datetime('now')),
+    updated_at  TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS pdfs_created_idx ON pdfs(created_at);
+CREATE INDEX IF NOT EXISTS pdfs_category_idx ON pdfs(category_id);
+
 CREATE INDEX IF NOT EXISTS links_folder_idx  ON links(folder);
 CREATE INDEX IF NOT EXISTS links_created_idx ON links(created_at);

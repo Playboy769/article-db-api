@@ -32,6 +32,23 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE reports ADD COLUMN starred INTEGER DEFAULT 0",
             "ALTER TABLE reports ADD COLUMN highlights TEXT DEFAULT '[]'",
             "ALTER TABLE reports ADD COLUMN notes TEXT DEFAULT '[]'",
+            # PDF library
+            """CREATE TABLE IF NOT EXISTS pdfs (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                title       TEXT NOT NULL,
+                author      TEXT,
+                date        TEXT,
+                source      TEXT,
+                data        TEXT NOT NULL,
+                highlights  TEXT DEFAULT '[]',
+                notes       TEXT DEFAULT '[]',
+                starred     INTEGER DEFAULT 0,
+                category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+                created_at  TEXT DEFAULT (datetime('now')),
+                updated_at  TEXT DEFAULT (datetime('now'))
+            )""",
+            "CREATE INDEX IF NOT EXISTS pdfs_created_idx ON pdfs(created_at)",
+            "CREATE INDEX IF NOT EXISTS pdfs_category_idx ON pdfs(category_id)",
             # links table (for databases created before links feature)
             """CREATE TABLE IF NOT EXISTS links (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -152,6 +169,30 @@ class LinkUpdate(BaseModel):
     desc: Optional[str] = None
     folder: Optional[str] = None
     icon: Optional[str] = None
+
+
+class PDFIn(BaseModel):
+    title: str
+    author: Optional[str] = None
+    date: Optional[str] = None
+    source: Optional[str] = None
+    data: str = ""             # base64 of PDF bytes
+    highlights: str = "[]"
+    notes: str = "[]"
+    starred: int = 0
+    category_id: Optional[int] = None
+
+
+class PDFUpdate(BaseModel):
+    title: Optional[str] = None
+    author: Optional[str] = None
+    date: Optional[str] = None
+    source: Optional[str] = None
+    highlights: Optional[str] = None
+    notes: Optional[str] = None
+    starred: Optional[int] = None
+    category_id: Optional[int] = None
+    # data is not patchable — re-upload via a new POST
 
 
 # ---------- helpers ----------
@@ -581,6 +622,95 @@ def update_report(rid: int, u: ReportUpdate):
 def delete_report(rid: int):
     with conn_ctx() as conn:
         conn.execute("DELETE FROM reports WHERE id = ?", (rid,))
+    return {"ok": True}
+
+
+# ---------- PDFs CRUD ----------
+@app.post("/pdfs")
+def create_pdf(p: PDFIn):
+    if not p.data:
+        raise HTTPException(400, "缺少 PDF 內容")
+    with conn_ctx() as conn:
+        cur = conn.execute(
+            """INSERT INTO pdfs
+               (title, author, date, source, data, highlights, notes, starred, category_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (p.title, p.author, p.date, p.source, p.data,
+             p.highlights, p.notes, p.starred, p.category_id),
+        )
+        pid = cur.lastrowid
+        row = conn.execute(
+            """SELECT id, title, author, date, source, highlights, notes, starred,
+                      category_id, created_at, updated_at FROM pdfs WHERE id = ?""",
+            (pid,),
+        ).fetchone()
+    return row
+
+
+@app.get("/pdfs")
+def list_pdfs(limit: int = Query(200, le=500), offset: int = 0):
+    with conn_ctx() as conn:
+        # 排除 data 欄位以節省頻寬
+        rows = conn.execute(
+            """SELECT p.id, p.title, p.author, p.date, p.source,
+                      p.highlights, p.notes, p.starred, p.category_id,
+                      c.name AS category_name, p.created_at, p.updated_at
+               FROM pdfs p LEFT JOIN categories c ON c.id = p.category_id
+               ORDER BY p.created_at DESC LIMIT ? OFFSET ?""",
+            (limit, offset),
+        ).fetchall()
+    return rows
+
+
+@app.get("/pdfs/{pid}/data")
+def get_pdf_data(pid: int):
+    with conn_ctx() as conn:
+        row = conn.execute("SELECT data FROM pdfs WHERE id = ?", (pid,)).fetchone()
+    if not row:
+        raise HTTPException(404, "not found")
+    return {"data": row["data"]}
+
+
+@app.get("/pdfs/{pid}")
+def get_pdf(pid: int):
+    with conn_ctx() as conn:
+        row = conn.execute(
+            """SELECT p.*, c.name AS category_name
+               FROM pdfs p LEFT JOIN categories c ON c.id = p.category_id
+               WHERE p.id = ?""",
+            (pid,),
+        ).fetchone()
+    if not row:
+        raise HTTPException(404, "not found")
+    return row
+
+
+@app.patch("/pdfs/{pid}")
+def update_pdf(pid: int, u: PDFUpdate):
+    with conn_ctx() as conn:
+        if not conn.execute("SELECT id FROM pdfs WHERE id = ?", (pid,)).fetchone():
+            raise HTTPException(404, "not found")
+        fields, values = [], []
+        for k in ("title", "author", "date", "source",
+                  "highlights", "notes", "starred", "category_id"):
+            v = getattr(u, k)
+            if v is not None:
+                fields.append(f"{k} = ?")
+                values.append(v)
+        if fields:
+            values.append(pid)
+            conn.execute(f"UPDATE pdfs SET {', '.join(fields)} WHERE id = ?", values)
+        return conn.execute(
+            """SELECT id, title, author, date, source, highlights, notes, starred,
+                      category_id, created_at, updated_at FROM pdfs WHERE id = ?""",
+            (pid,),
+        ).fetchone()
+
+
+@app.delete("/pdfs/{pid}")
+def delete_pdf(pid: int):
+    with conn_ctx() as conn:
+        conn.execute("DELETE FROM pdfs WHERE id = ?", (pid,))
     return {"ok": True}
 
 
