@@ -1,13 +1,26 @@
-# deploy marker: CLD (causal loop diagram) AI generation — 2026-05-17
+# deploy marker: PDF files on volume filesystem — 2026-05-22
+import base64
 import html as html_mod
 import json as json_lib
 import os
+from pathlib import Path
 import re
 import urllib.error
 import urllib.request
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
+
+from config import SQLITE_DB_PATH
+
+# PDF binary 存到與 SQLite 同層的 pdfs/ 資料夾（在 Railway Volume 上）
+_DB_DIR = Path(SQLITE_DB_PATH).resolve().parent
+PDF_DIR = _DB_DIR / "pdfs"
+PDF_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _pdf_path(pid: int) -> Path:
+    return PDF_DIR / f"{pid}.pdf"
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
@@ -66,6 +79,20 @@ async def lifespan(app: FastAPI):
                 conn.execute(stmt)
             except Exception:
                 pass
+        # 一次性遷移：把舊版存在 pdfs.data 欄位的 base64 搬到 Volume 上的檔案
+        try:
+            rows = conn.execute(
+                "SELECT id, data FROM pdfs WHERE data IS NOT NULL AND data != ''"
+            ).fetchall()
+            for r in rows:
+                try:
+                    raw = base64.b64decode(r["data"])
+                    _pdf_path(r["id"]).write_bytes(raw)
+                    conn.execute("UPDATE pdfs SET data = '' WHERE id = ?", (r["id"],))
+                except Exception:
+                    pass
+        except Exception:
+            pass
     yield
 
 
@@ -626,19 +653,36 @@ def delete_report(rid: int):
 
 
 # ---------- PDFs CRUD ----------
+# PDF 二進位內容存到 Volume 上的 pdfs/{id}.pdf；DB 的 data 欄位保留為空字串
 @app.post("/pdfs")
 def create_pdf(p: PDFIn):
     if not p.data:
         raise HTTPException(400, "缺少 PDF 內容")
+    try:
+        raw = base64.b64decode(p.data)
+    except Exception:
+        raise HTTPException(400, "PDF base64 格式錯誤")
+
     with conn_ctx() as conn:
         cur = conn.execute(
             """INSERT INTO pdfs
                (title, author, date, source, data, highlights, notes, starred, category_id)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (p.title, p.author, p.date, p.source, p.data,
+            (p.title, p.author, p.date, p.source, "",
              p.highlights, p.notes, p.starred, p.category_id),
         )
         pid = cur.lastrowid
+
+    # 寫到 Volume 上的檔案
+    try:
+        _pdf_path(pid).write_bytes(raw)
+    except Exception as e:
+        # 寫檔失敗 → 回滾資料庫紀錄，避免 orphan row
+        with conn_ctx() as conn:
+            conn.execute("DELETE FROM pdfs WHERE id = ?", (pid,))
+        raise HTTPException(500, f"無法寫入 PDF 檔案：{e}")
+
+    with conn_ctx() as conn:
         row = conn.execute(
             """SELECT id, title, author, date, source, highlights, notes, starred,
                       category_id, created_at, updated_at FROM pdfs WHERE id = ?""",
@@ -650,7 +694,6 @@ def create_pdf(p: PDFIn):
 @app.get("/pdfs")
 def list_pdfs(limit: int = Query(200, le=500), offset: int = 0):
     with conn_ctx() as conn:
-        # 排除 data 欄位以節省頻寬
         rows = conn.execute(
             """SELECT p.id, p.title, p.author, p.date, p.source,
                       p.highlights, p.notes, p.starred, p.category_id,
@@ -664,18 +707,29 @@ def list_pdfs(limit: int = Query(200, le=500), offset: int = 0):
 
 @app.get("/pdfs/{pid}/data")
 def get_pdf_data(pid: int):
+    # 優先讀檔案（新版儲存方式）
+    fp = _pdf_path(pid)
+    if fp.exists():
+        try:
+            b64 = base64.b64encode(fp.read_bytes()).decode("ascii")
+            return {"data": b64}
+        except Exception as e:
+            raise HTTPException(500, f"讀取 PDF 失敗：{e}")
+    # 後援：舊資料還在 DB 的 data 欄位
     with conn_ctx() as conn:
         row = conn.execute("SELECT data FROM pdfs WHERE id = ?", (pid,)).fetchone()
     if not row:
         raise HTTPException(404, "not found")
-    return {"data": row["data"]}
+    return {"data": row["data"] or ""}
 
 
 @app.get("/pdfs/{pid}")
 def get_pdf(pid: int):
     with conn_ctx() as conn:
         row = conn.execute(
-            """SELECT p.*, c.name AS category_name
+            """SELECT p.id, p.title, p.author, p.date, p.source,
+                      p.highlights, p.notes, p.starred, p.category_id,
+                      c.name AS category_name, p.created_at, p.updated_at
                FROM pdfs p LEFT JOIN categories c ON c.id = p.category_id
                WHERE p.id = ?""",
             (pid,),
@@ -709,6 +763,12 @@ def update_pdf(pid: int, u: PDFUpdate):
 
 @app.delete("/pdfs/{pid}")
 def delete_pdf(pid: int):
+    fp = _pdf_path(pid)
+    try:
+        if fp.exists():
+            fp.unlink()
+    except Exception:
+        pass
     with conn_ctx() as conn:
         conn.execute("DELETE FROM pdfs WHERE id = ?", (pid,))
     return {"ok": True}
