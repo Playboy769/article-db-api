@@ -11,6 +11,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
 
+import httpx
+import trafilatura
+
 from config import SQLITE_DB_PATH
 
 # PDF binary 存到與 SQLite 同層的 pdfs/ 資料夾（在 Railway Volume 上）
@@ -869,21 +872,78 @@ def delete_link_api(lid: int):
 
 
 # ---------- URL fetch (proxy) ----------
+_FETCH_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+}
+
+def _og(raw: str, prop: str) -> str:
+    m = re.search(
+        rf'<meta[^>]+(?:property|name)=["\']og:{prop}["\'][^>]+content=["\'](.*?)["\']',
+        raw, re.I | re.S
+    ) or re.search(
+        rf'<meta[^>]+content=["\'](.*?)["\'][^>]+(?:property|name)=["\']og:{prop}["\']',
+        raw, re.I | re.S
+    )
+    return html_mod.unescape(m.group(1).strip()) if m else ""
+
 @app.get("/fetch-url")
 def fetch_url_endpoint(url: str):
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible)"})
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
+        with httpx.Client(headers=_FETCH_HEADERS, follow_redirects=True, timeout=15) as client:
+            resp = client.get(url)
+            resp.raise_for_status()
+            raw = resp.text
     except Exception as e:
         raise HTTPException(400, f"無法抓取：{e}")
+
+    # --- title: <title> → og:title ---
     title_m = re.search(r"<title[^>]*>(.*?)</title>", raw, re.I | re.S)
     title = html_mod.unescape(title_m.group(1).strip()) if title_m else ""
-    clean = re.sub(
-        r"<(script|style|nav|header|footer|aside|form|button)[^>]*>.*?</\1>",
-        "", raw, flags=re.I | re.S
+    og_title = _og(raw, "title")
+    if og_title and (not title or len(og_title) < len(title)):
+        title = og_title
+
+    # --- author from OG / meta ---
+    author = _og(raw, "article:author") or _og(raw, "author")
+    if not author:
+        am = re.search(r'<meta[^>]+name=["\']author["\'][^>]+content=["\'](.*?)["\']', raw, re.I)
+        author = html_mod.unescape(am.group(1).strip()) if am else ""
+
+    # --- published date ---
+    date = _og(raw, "article:published_time") or _og(raw, "published_time")
+    if date:
+        date = date[:10]  # keep YYYY-MM-DD only
+
+    # --- main content via trafilatura ---
+    content = trafilatura.extract(
+        raw,
+        url=url,
+        include_comments=False,
+        include_tables=True,
+        no_fallback=False,
+        favor_precision=False,
+        favor_recall=True,
     )
-    clean = re.sub(r"<[^>]+>", " ", clean)
-    clean = html_mod.unescape(re.sub(r"[ \t]+", " ", clean).strip())
-    clean = "\n".join(line.strip() for line in clean.splitlines() if line.strip())
-    return {"title": title, "content": clean[:8000]}
+
+    # fallback: strip tags manually if trafilatura returns nothing
+    if not content:
+        clean = re.sub(
+            r"<(script|style|nav|header|footer|aside|form|button|noscript)[^>]*>.*?</\1>",
+            "", raw, flags=re.I | re.S
+        )
+        clean = re.sub(r"<[^>]+>", " ", clean)
+        clean = html_mod.unescape(re.sub(r"[ \t]+", " ", clean).strip())
+        content = "\n".join(ln.strip() for ln in clean.splitlines() if ln.strip())
+
+    return {
+        "title": title,
+        "content": content[:10000],
+        "author": author,
+        "date": date,
+    }

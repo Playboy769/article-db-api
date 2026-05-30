@@ -6424,10 +6424,13 @@ async function doFetchUrl() {
     if (res.detail) { toast('抓取失敗：' + res.detail); return; }
     if (res.title)   document.getElementById('f-title').value   = res.title;
     if (res.content) document.getElementById('f-content').value = res.content;
+    if (res.author) { const el = document.getElementById('f-author'); if (el && !el.value) el.value = res.author; }
+    if (res.date)   { const el = document.getElementById('f-date');   if (el && !el.value) el.value = res.date; }
     const src = document.getElementById('f-source');
     if (src && !src.value) src.value = url;
     hideFetchUrlDialog();
-    toast('✓ 已填入文章內容');
+    const filled = ['標題', res.author && '作者', res.date && '日期'].filter(Boolean).join('、');
+    toast(`✓ 已填入：${filled}與內容`);
   } catch(e) { toast('抓取失敗'); }
   finally { btn.textContent = '抓取'; btn.disabled = false; }
 }
