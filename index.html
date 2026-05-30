@@ -2908,7 +2908,9 @@ function _apiToArticle(r) {
     folder: r.category_name || '',
     images: _parseImages(r.images), image: '',
     tags: r.tags || [],
-    starred: r.starred || 0
+    starred: r.starred || 0,
+    notes: r.notes || '[]',
+    highlights: r.highlights || '[]',
   };
 }
 
@@ -2917,7 +2919,9 @@ function _apiToReport(r) {
     id: r.id, company: r.company, ticker: r.ticker || '',
     sector: r.sector || '', rating: r.rating || '', target: r.target || '',
     date: r.date || '', analyst: r.analyst || '', source: r.source || '',
-    content: r.content || '', images: _parseImages(r.images), image: ''
+    content: r.content || '', images: _parseImages(r.images), image: '',
+    notes: r.notes || '[]',
+    highlights: r.highlights || '[]',
   };
 }
 
