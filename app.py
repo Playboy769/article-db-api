@@ -27,6 +27,7 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from db import conn_ctx, init_schema
@@ -104,6 +105,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+_HERE = Path(__file__).parent
+
+@app.get("/")
+def frontend():
+    return FileResponse(_HERE / "index.html")
 
 
 # ---------- models ----------
