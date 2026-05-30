@@ -1756,8 +1756,11 @@ body.dark .note-item-text.md-rendered thead { background: rgba(200,169,110,0.08)
 /* anchor-tooltip 也吃同一套 */
 #anchor-tooltip.md-rendered table { width:100%; border-collapse: collapse; margin: 5px 0; font-size: 11px; }
 #anchor-tooltip.md-rendered th,
-#anchor-tooltip.md-rendered td { padding: 3px 6px; border: 1px solid rgba(255,255,255,0.18); text-align: left; }
-#anchor-tooltip.md-rendered th { background: rgba(255,255,255,0.08); font-weight: 600; }
+#anchor-tooltip.md-rendered td { padding: 3px 6px; border: 1px solid #e8d5a8; text-align: left; }
+#anchor-tooltip.md-rendered th { background: #fdf6e8; font-weight: 600; }
+body.dark #anchor-tooltip.md-rendered th,
+body.dark #anchor-tooltip.md-rendered td { border-color: #3a3020; }
+body.dark #anchor-tooltip.md-rendered th { background: #252018; }
 /* format toggle */
 .note-fmt-btn {
   background: none; border: 1px solid var(--border); border-radius: 4px;
@@ -1867,17 +1870,21 @@ body.dark .note-edit-textarea { background: #252320; }
 .anchor-cancel-btn:hover { color: var(--text-main); border-color: var(--text-faint); }
 #anchor-tooltip {
   position: fixed; z-index: 560;
-  background: #2a2520; color: #f0ece6;
-  border-radius: 10px; padding: 10px 12px; max-width: 240px;
-  font-size: 12px; line-height: 1.55;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  background: #fff; color: #2a2218;
+  border: 1.5px solid #c8a96e;
+  border-radius: 10px; padding: 12px 14px; max-width: 260px;
+  font-size: 12.5px; line-height: 1.6;
+  box-shadow: 0 8px 28px rgba(180,140,60,0.13), 0 2px 8px rgba(0,0,0,0.07);
   display: none; pointer-events: none; white-space: pre-wrap;
 }
 #anchor-tooltip.md-rendered { white-space: normal; }
-#anchor-tooltip.md-rendered p { margin-bottom: 0.4em; }
+#anchor-tooltip.md-rendered p { margin-bottom: 0.45em; }
 #anchor-tooltip.md-rendered p:last-child { margin-bottom: 0; }
-#anchor-tooltip.md-rendered strong { font-weight: 600; }
-#anchor-tooltip.md-rendered code { background: rgba(255,255,255,0.12); border-radius:3px; padding: 1px 4px; font-size: 11px; }
+#anchor-tooltip.md-rendered strong { font-weight: 600; color: #1a1208; }
+#anchor-tooltip.md-rendered code { background: #fdf6e8; border: 1px solid #e8d9b0; border-radius:3px; padding: 1px 5px; font-size: 11px; color: #7a5c20; }
+body.dark #anchor-tooltip { background: #1e1c18; color: #f0ece4; border-color: #b8914a; box-shadow: 0 8px 28px rgba(0,0,0,0.45); }
+body.dark #anchor-tooltip.md-rendered strong { color: #f5edd8; }
+body.dark #anchor-tooltip.md-rendered code { background: #2a2418; border-color: #4a3a20; color: #c8a96e; }
 .note-anchor-ref {
   font-size: 11px; color: var(--accent-dim); cursor: pointer;
   border-left: 2px solid var(--accent); padding: 2px 7px;
