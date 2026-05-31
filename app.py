@@ -892,8 +892,81 @@ def _og(raw: str, prop: str) -> str:
     )
     return html_mod.unescape(m.group(1).strip()) if m else ""
 
+
+def _json_ld(raw: str) -> dict:
+    """Extract title/author/date from JSON-LD structured data."""
+    result = {}
+    for m in re.finditer(
+        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+        raw, re.I | re.S
+    ):
+        try:
+            d = json_lib.loads(m.group(1))
+            if isinstance(d, list):
+                d = d[0]
+            if d.get("@type") in ("Article", "NewsArticle", "BlogPosting"):
+                if d.get("headline") and not result.get("title"):
+                    result["title"] = d["headline"]
+                if d.get("author") and not result.get("author"):
+                    auth = d["author"]
+                    if isinstance(auth, list):
+                        auth = auth[0]
+                    result["author"] = auth.get("name", "")
+                if d.get("datePublished") and not result.get("date"):
+                    result["date"] = d["datePublished"][:10]
+        except Exception:
+            pass
+    return result
+
+
+def _fetch_substack(url: str) -> dict | None:
+    """Use Substack's internal API to get full article JSON."""
+    m = re.match(r'https?://open\.substack\.com/pub/([^/?]+)/p/([^/?]+)', url)
+    if not m:
+        m = re.match(r'https?://([^./?]+)\.substack\.com/p/([^/?]+)', url)
+    if not m:
+        return None
+
+    pub, slug = m.group(1), m.group(2)
+    api_url = f"https://{pub}.substack.com/api/v1/posts/by-slug/{slug}"
+    try:
+        with httpx.Client(headers=_FETCH_HEADERS, follow_redirects=True, timeout=15) as client:
+            r = client.get(api_url)
+            if r.status_code != 200:
+                return None
+            d = r.json()
+    except Exception:
+        return None
+
+    title = d.get("title", "")
+    bylines = d.get("publishedBylines") or []
+    author = bylines[0].get("name", "") if bylines else ""
+    date = (d.get("post_date") or "")[:10]
+
+    # body_html contains the full article HTML
+    body_html = d.get("body_html", "")
+    content = ""
+    if body_html:
+        content = trafilatura.extract(
+            body_html, include_comments=False, favor_recall=True
+        ) or ""
+        if not content:
+            content = re.sub(r"<[^>]+>", " ", body_html)
+            content = re.sub(r"\s+", " ", content).strip()
+    if not content:
+        content = d.get("truncated_body_text", "")
+
+    return {"title": title, "author": author, "date": date, "content": content[:10000]}
+
+
 @app.get("/fetch-url")
 def fetch_url_endpoint(url: str):
+    # ── Substack ──────────────────────────────────────────────────
+    substack = _fetch_substack(url)
+    if substack:
+        return substack
+
+    # ── General fetch ─────────────────────────────────────────────
     try:
         with httpx.Client(headers=_FETCH_HEADERS, follow_redirects=True, timeout=15) as client:
             resp = client.get(url)
@@ -902,36 +975,31 @@ def fetch_url_endpoint(url: str):
     except Exception as e:
         raise HTTPException(400, f"無法抓取：{e}")
 
-    # --- title: <title> → og:title ---
+    # title: JSON-LD → og:title → <title>
+    ld = _json_ld(raw)
     title_m = re.search(r"<title[^>]*>(.*?)</title>", raw, re.I | re.S)
-    title = html_mod.unescape(title_m.group(1).strip()) if title_m else ""
-    og_title = _og(raw, "title")
-    if og_title and (not title or len(og_title) < len(title)):
-        title = og_title
+    title = (
+        ld.get("title")
+        or _og(raw, "title")
+        or (html_mod.unescape(title_m.group(1).strip()) if title_m else "")
+    )
 
-    # --- author from OG / meta ---
-    author = _og(raw, "article:author") or _og(raw, "author")
+    # author: JSON-LD → og:article:author → meta author
+    author = ld.get("author") or _og(raw, "article:author") or _og(raw, "author")
     if not author:
         am = re.search(r'<meta[^>]+name=["\']author["\'][^>]+content=["\'](.*?)["\']', raw, re.I)
         author = html_mod.unescape(am.group(1).strip()) if am else ""
 
-    # --- published date ---
-    date = _og(raw, "article:published_time") or _og(raw, "published_time")
+    # date: JSON-LD → og
+    date = ld.get("date") or _og(raw, "article:published_time") or _og(raw, "published_time")
     if date:
-        date = date[:10]  # keep YYYY-MM-DD only
+        date = date[:10]
 
-    # --- main content via trafilatura ---
+    # content via trafilatura → fallback regex
     content = trafilatura.extract(
-        raw,
-        url=url,
-        include_comments=False,
-        include_tables=True,
-        no_fallback=False,
-        favor_precision=False,
-        favor_recall=True,
+        raw, url=url, include_comments=False, include_tables=True,
+        no_fallback=False, favor_precision=False, favor_recall=True,
     )
-
-    # fallback: strip tags manually if trafilatura returns nothing
     if not content:
         clean = re.sub(
             r"<(script|style|nav|header|footer|aside|form|button|noscript)[^>]*>.*?</\1>",
@@ -941,9 +1009,4 @@ def fetch_url_endpoint(url: str):
         clean = html_mod.unescape(re.sub(r"[ \t]+", " ", clean).strip())
         content = "\n".join(ln.strip() for ln in clean.splitlines() if ln.strip())
 
-    return {
-        "title": title,
-        "content": content[:10000],
-        "author": author,
-        "date": date,
-    }
+    return {"title": title, "content": content[:10000], "author": author, "date": date}
