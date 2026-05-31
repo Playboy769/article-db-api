@@ -948,7 +948,8 @@ def _fetch_substack(url: str) -> dict | None:
     content = ""
     if body_html:
         content = trafilatura.extract(
-            body_html, include_comments=False, favor_recall=True
+            body_html, include_comments=False, favor_recall=True,
+            output_format="markdown",
         ) or ""
         if not content:
             content = re.sub(r"<[^>]+>", " ", body_html)
@@ -999,6 +1000,7 @@ def fetch_url_endpoint(url: str):
     content = trafilatura.extract(
         raw, url=url, include_comments=False, include_tables=True,
         no_fallback=False, favor_precision=False, favor_recall=True,
+        output_format="markdown",
     )
     if not content:
         clean = re.sub(
