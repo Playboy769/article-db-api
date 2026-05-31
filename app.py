@@ -936,8 +936,16 @@ def _html_to_md(html: str) -> str:
             return f'<img src="{html_mod.unescape(src.group(1))}" alt="{a}">'
         return ""
     html = re.sub(r'<picture[^>]*>.*?</picture>', _simplify_picture, html, flags=re.I|re.S)
-    # 2. 把 <a href="…"><img …></a> 解包成 <img …>，避免 markdownify 產生 [![](url)](link)
-    html = re.sub(r'<a[^>]*>\s*(<img[^>]+>)\s*</a>', r'\1', html, flags=re.I)
+    # 2. 把 <a href="…">…<img …>…</a> 解包成 <img …>，避免 markdownify 產生 [![](url)](link)
+    #    支援 <a><img></a> 和 <a><div><img></div></a> 等任意嵌套結構
+    def _unwrap_a_img(m: re.Match) -> str:
+        inner = m.group(1)
+        img_tag = re.search(r'<img[^>]+>', inner, re.I)
+        text_only = re.sub(r'<[^>]+>', '', inner).strip()
+        if img_tag and not text_only:
+            return img_tag.group(0)
+        return m.group(0)
+    html = re.sub(r'<a[^>]*>(.*?)</a>', _unwrap_a_img, html, flags=re.I|re.S)
     # 3. markdownify 轉換
     md_text = _md(html, heading_style="ATX", strip=_STRIP_TAGS)
     return re.sub(r'\n{3,}', '\n\n', md_text).strip()
@@ -1040,35 +1048,6 @@ def fetch_url_endpoint(url: str):
     substack = _fetch_substack(url)
     if substack:
         return substack
-
-@app.get("/debug-fetch")
-def debug_fetch(url: str):
-    """Debug endpoint: 回傳 Substack body_html 片段和抓到的圖片 URL，不做 base64 編碼。"""
-    m = re.match(r'https?://open\.substack\.com/pub/([^/?]+)/p/([^/?]+)', url)
-    if not m:
-        m = re.match(r'https?://([^./?]+)\.substack\.com/p/([^/?]+)', url)
-    if not m:
-        return {"error": "not a substack url"}
-    pub, slug = m.group(1), m.group(2)
-    api_url = f"https://{pub}.substack.com/api/v1/posts/by-slug/{slug}"
-    with httpx.Client(headers=_FETCH_HEADERS, follow_redirects=True, timeout=15) as client:
-        r = client.get(api_url)
-        d = r.json()
-    body_html = d.get("body_html", "")
-    # 找出所有 <img src="..."> 和 <source srcset="...">
-    img_srcs = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', body_html, re.I)
-    picture_count = len(re.findall(r'<picture', body_html, re.I))
-    a_img_count = len(re.findall(r'<a[^>]*>\s*<img', body_html, re.I))
-    # 跑 _html_to_md 看結果
-    md_preview = _html_to_md(body_html)
-    img_in_md = re.findall(r'!\[([^\]]*)\]\((https?://[^)\s]+)\)', md_preview)
-    return {
-        "picture_tags": picture_count,
-        "a_img_direct": a_img_count,
-        "img_srcs_in_html": img_srcs[:5],
-        "img_refs_in_md": img_in_md[:5],
-        "md_preview_500chars": md_preview[:500],
-    }
 
     # ── General fetch ─────────────────────────────────────────────
     try:
