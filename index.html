@@ -1328,9 +1328,19 @@ body:not(.pdfs-mode) .pdfs-only { display: none !important; }
 .article-content-display tr:hover td { background: rgba(0,0,0,0.02); }
 .article-content-display hr { border: none; border-top: 1px solid var(--border); margin: 1.8em 0; }
 .article-content-display a { color: var(--accent-dim); text-decoration: underline; }
+.article-content-display img {
+  max-width: 100%; height: auto; display: block;
+  border-radius: 8px; margin: 1.2em auto;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+}
 .report-content-display {
   color: #3a342c;
   max-width: 900px;
+}
+.report-content-display img {
+  max-width: 100%; height: auto; display: block;
+  border-radius: 8px; margin: 1.2em auto;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
 }
 
 /* 圖片加寬 */
