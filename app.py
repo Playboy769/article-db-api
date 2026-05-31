@@ -14,6 +14,7 @@ from typing import Optional
 import io
 import httpx
 import trafilatura
+from markdownify import markdownify as _md
 from PIL import Image
 
 from config import SQLITE_DB_PATH
@@ -921,6 +922,29 @@ def _encode_image(url: str, client: httpx.Client) -> str | None:
         return None
 
 
+_STRIP_TAGS = ["script","style","nav","header","footer","aside",
+               "noscript","button","form","iframe","svg"]
+
+def _html_to_md(html: str) -> str:
+    """把 HTML 轉成保留圖片位置的 Markdown。"""
+    # 先把 <picture> 化簡成單純 <img>，讓 markdownify 能處理
+    def _simplify_picture(m: re.Match) -> str:
+        src = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', m.group(0), re.I)
+        alt = re.search(r'<img[^>]+alt=["\']([^"\']*)["\']', m.group(0), re.I)
+        if src:
+            a = html_mod.unescape(alt.group(1)) if alt else ""
+            return f'<img src="{src.group(1)}" alt="{a}">'
+        return ""
+    html = re.sub(r'<picture[^>]*>.*?</picture>', _simplify_picture, html, flags=re.I|re.S)
+    md_text = _md(
+        html,
+        heading_style="ATX",
+        strip=_STRIP_TAGS,
+        newline_style="backslash",
+    )
+    return re.sub(r'\n{3,}', '\n\n', md_text).strip()
+
+
 def _inline_images(md: str, client: httpx.Client) -> str:
     """把 Markdown 裡的圖片 URL 替換成 base64 data URL。"""
     pattern = re.compile(r'!\[([^\]]*)\]\((https?://[^)\s]+)\)')
@@ -1003,16 +1027,9 @@ def _fetch_substack(url: str) -> dict | None:
     body_html = d.get("body_html", "")
     content = ""
     if body_html:
-        with httpx.Client(headers=_FETCH_HEADERS, follow_redirects=True, timeout=15) as img_client:
-            content = trafilatura.extract(
-                body_html, include_comments=False, favor_recall=True,
-                output_format="markdown", include_images=True,
-            ) or ""
-            if content:
-                content = _inline_images(content, img_client)
-            else:
-                content = re.sub(r"<[^>]+>", " ", body_html)
-                content = re.sub(r"\s+", " ", content).strip()
+        with httpx.Client(headers=_FETCH_HEADERS, follow_redirects=True, timeout=20) as img_client:
+            content = _html_to_md(body_html)
+            content = _inline_images(content, img_client)
     if not content:
         content = d.get("truncated_body_text", "")
 
@@ -1055,22 +1072,17 @@ def fetch_url_endpoint(url: str):
     if date:
         date = date[:10]
 
-    # content via trafilatura → fallback regex
-    with httpx.Client(headers=_FETCH_HEADERS, follow_redirects=True, timeout=15) as img_client:
-        content = trafilatura.extract(
+    # content: trafilatura 抓主體 XML → markdownify 保留圖片位置
+    with httpx.Client(headers=_FETCH_HEADERS, follow_redirects=True, timeout=20) as img_client:
+        main_html = trafilatura.extract(
             raw, url=url, include_comments=False, include_tables=True,
-            no_fallback=False, favor_precision=False, favor_recall=True,
-            output_format="markdown", include_images=True,
+            no_fallback=False, favor_recall=True,
+            output_format="xml",        # 取結構化 XML 再轉 MD
         )
-        if content:
-            content = _inline_images(content, img_client)
+        if main_html:
+            content = _html_to_md(main_html)
         else:
-            clean = re.sub(
-                r"<(script|style|nav|header|footer|aside|form|button|noscript)[^>]*>.*?</\1>",
-                "", raw, flags=re.I | re.S
-            )
-            clean = re.sub(r"<[^>]+>", " ", clean)
-            clean = html_mod.unescape(re.sub(r"[ \t]+", " ", clean).strip())
-            content = "\n".join(ln.strip() for ln in clean.splitlines() if ln.strip())
+            content = _html_to_md(raw)  # fallback: 全頁轉（noise 較多）
+        content = _inline_images(content, img_client)
 
     return {"title": title, "content": content, "author": author, "date": date}
