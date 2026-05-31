@@ -1041,6 +1041,35 @@ def fetch_url_endpoint(url: str):
     if substack:
         return substack
 
+@app.get("/debug-fetch")
+def debug_fetch(url: str):
+    """Debug endpoint: 回傳 Substack body_html 片段和抓到的圖片 URL，不做 base64 編碼。"""
+    m = re.match(r'https?://open\.substack\.com/pub/([^/?]+)/p/([^/?]+)', url)
+    if not m:
+        m = re.match(r'https?://([^./?]+)\.substack\.com/p/([^/?]+)', url)
+    if not m:
+        return {"error": "not a substack url"}
+    pub, slug = m.group(1), m.group(2)
+    api_url = f"https://{pub}.substack.com/api/v1/posts/by-slug/{slug}"
+    with httpx.Client(headers=_FETCH_HEADERS, follow_redirects=True, timeout=15) as client:
+        r = client.get(api_url)
+        d = r.json()
+    body_html = d.get("body_html", "")
+    # 找出所有 <img src="..."> 和 <source srcset="...">
+    img_srcs = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', body_html, re.I)
+    picture_count = len(re.findall(r'<picture', body_html, re.I))
+    a_img_count = len(re.findall(r'<a[^>]*>\s*<img', body_html, re.I))
+    # 跑 _html_to_md 看結果
+    md_preview = _html_to_md(body_html)
+    img_in_md = re.findall(r'!\[([^\]]*)\]\((https?://[^)\s]+)\)', md_preview)
+    return {
+        "picture_tags": picture_count,
+        "a_img_direct": a_img_count,
+        "img_srcs_in_html": img_srcs[:5],
+        "img_refs_in_md": img_in_md[:5],
+        "md_preview_500chars": md_preview[:500],
+    }
+
     # ── General fetch ─────────────────────────────────────────────
     try:
         with httpx.Client(headers=_FETCH_HEADERS, follow_redirects=True, timeout=15) as client:
