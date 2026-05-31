@@ -11,11 +11,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
 
-import io
 import httpx
 import trafilatura
 from markdownify import markdownify as _md
-from PIL import Image
 
 from config import SQLITE_DB_PATH
 
@@ -885,87 +883,14 @@ _FETCH_HEADERS = {
     "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
 }
 
-_MAX_IMAGES   = 6     # 每篇文章最多嵌入幾張圖
-_IMG_MAX_DIM  = 960   # 最長邊像素上限
-_IMG_QUALITY  = 78    # JPEG 壓縮品質
-_IMG_SKIP_RE  = re.compile(
-    r'(icon|logo|avatar|pixel|tracking|badge|button|spinner|ad[_-]|\.gif$)',
-    re.I
-)
-
-def _encode_image(url: str, client: httpx.Client) -> str | None:
-    """下載並壓縮圖片，回傳 base64 data URL；失敗回傳 None。"""
-    if _IMG_SKIP_RE.search(url):
-        return None
-    try:
-        r = client.get(url, timeout=6, follow_redirects=True)
-        if r.status_code != 200:
-            return None
-        ctype = r.headers.get("content-type", "").split(";")[0].strip()
-        if not ctype.startswith("image/") or ctype == "image/gif":
-            return None
-        img = Image.open(io.BytesIO(r.content))
-        if img.width < 80 or img.height < 80:   # 跳過縮圖/icon
-            return None
-        # 縮放
-        if img.width > _IMG_MAX_DIM or img.height > _IMG_MAX_DIM:
-            img.thumbnail((_IMG_MAX_DIM, _IMG_MAX_DIM), Image.LANCZOS)
-        # 轉 RGB（JPEG 不支援透明）
-        if img.mode not in ("RGB",):
-            bg = Image.new("RGB", img.size, (255, 255, 255))
-            bg.paste(img, mask=img.split()[3] if img.mode == "RGBA" else None)
-            img = bg
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=_IMG_QUALITY, optimize=True)
-        return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
-    except Exception:
-        return None
-
 
 _STRIP_TAGS = ["script","style","nav","header","footer","aside",
-               "noscript","button","form","iframe","svg"]
+               "noscript","button","form","iframe","svg","img","figure","picture"]
 
 def _html_to_md(html: str) -> str:
-    """把文章 HTML 轉成保留圖片位置的 Markdown（僅用於 body_html 已是純文章內容的情況）。"""
-    # 1. 把 <picture>…</picture> 化簡成單純 <img src="…">
-    def _simplify_picture(m: re.Match) -> str:
-        src = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', m.group(0), re.I)
-        alt = re.search(r'<img[^>]+alt=["\']([^"\']*)["\']', m.group(0), re.I)
-        if src:
-            a = html_mod.unescape(alt.group(1)) if alt else ""
-            return f'<img src="{html_mod.unescape(src.group(1))}" alt="{a}">'
-        return ""
-    html = re.sub(r'<picture[^>]*>.*?</picture>', _simplify_picture, html, flags=re.I|re.S)
-    # 2. 把 <a href="…">…<img …>…</a> 解包成 <img …>，避免 markdownify 產生 [![](url)](link)
-    #    支援 <a><img></a> 和 <a><div><img></div></a> 等任意嵌套結構
-    def _unwrap_a_img(m: re.Match) -> str:
-        inner = m.group(1)
-        img_tag = re.search(r'<img[^>]+>', inner, re.I)
-        text_only = re.sub(r'<[^>]+>', '', inner).strip()
-        if img_tag and not text_only:
-            return img_tag.group(0)
-        return m.group(0)
-    html = re.sub(r'<a[^>]*>(.*?)</a>', _unwrap_a_img, html, flags=re.I|re.S)
-    # 3. markdownify 轉換
+    """把文章 HTML 轉成 Markdown 純文字（不含圖片）。"""
     md_text = _md(html, heading_style="ATX", strip=_STRIP_TAGS)
     return re.sub(r'\n{3,}', '\n\n', md_text).strip()
-
-
-def _inline_images(md: str, client: httpx.Client) -> str:
-    """把 Markdown 裡的圖片 URL 替換成 base64 data URL。"""
-    pattern = re.compile(r'!\[([^\]]*)\]\((https?://[^)\s]+)\)')
-    count = [0]
-
-    def replace(m: re.Match) -> str:
-        if count[0] >= _MAX_IMAGES:
-            return ""          # 超過上限：移除圖片標記
-        data_url = _encode_image(m.group(2), client)
-        if data_url:
-            count[0] += 1
-            return f"![{m.group(1)}]({data_url})"
-        return ""              # 下載失敗：移除圖片標記
-
-    return pattern.sub(replace, md)
 
 
 def _og(raw: str, prop: str) -> str:
@@ -1031,11 +956,7 @@ def _fetch_substack(url: str) -> dict | None:
 
     # body_html contains the full article HTML
     body_html = d.get("body_html", "")
-    content = ""
-    if body_html:
-        with httpx.Client(headers=_FETCH_HEADERS, follow_redirects=True, timeout=20) as img_client:
-            content = _html_to_md(body_html)
-            content = _inline_images(content, img_client)
+    content = _html_to_md(body_html) if body_html else ""
     if not content:
         content = d.get("truncated_body_text", "")
 
