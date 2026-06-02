@@ -443,19 +443,19 @@ _CLD_PROMPT = """你是系統動力學（System Dynamics）專家。請分析以
 """
 
 
-def _call_gemini(prompt: str) -> dict:
+def _call_gemini(prompt: str, json_mode: bool = True):
     if not GEMINI_API_KEY:
         raise HTTPException(500, "伺服器未設定 GEMINI_API_KEY，請在 Railway 環境變數加入")
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
         f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
     )
+    gen_config = {"temperature": 0.4}
+    if json_mode:
+        gen_config["responseMimeType"] = "application/json"
     body = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "temperature": 0.4,
-        },
+        "generationConfig": gen_config,
     }
     data = json_lib.dumps(body).encode("utf-8")
     req = urllib.request.Request(
@@ -472,7 +472,7 @@ def _call_gemini(prompt: str) -> dict:
     try:
         parsed = json_lib.loads(raw)
         text = parsed["candidates"][0]["content"]["parts"][0]["text"]
-        return json_lib.loads(text)
+        return json_lib.loads(text) if json_mode else text.strip()
     except Exception as e:
         raise HTTPException(502, f"Gemini 回應格式異常：{e}")
 
@@ -498,6 +498,41 @@ def generate_cld(aid: int):
         cld_json = json_lib.dumps(cld, ensure_ascii=False)
         conn.execute("UPDATE articles SET cld = ? WHERE id = ?", (cld_json, aid))
         return cld
+
+
+# ---------- AI 摘要生成 ----------
+_SUMMARY_PROMPT = """你是專業的文章編輯。請閱讀以下文章，寫出一段精煉的繁體中文摘要。
+
+要求：
+- 用 3 到 5 句話、約 120 至 200 字，涵蓋文章的核心論點與重要結論。
+- 客觀中立、直接陳述內容，不要使用「這篇文章」「作者認為」等贅詞。
+- 只回傳純文字摘要，不要 JSON、不要 markdown 標記、不要標題。
+
+文章標題：%(title)s
+
+文章內容：
+%(content)s
+"""
+
+
+@app.post("/articles/{aid}/generate-summary")
+def generate_summary(aid: int):
+    with conn_ctx() as conn:
+        row = conn.execute(
+            "SELECT title, content FROM articles WHERE id = ?", (aid,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "not found")
+        title = row["title"] or ""
+        content = (row["content"] or "")[:12000]
+        if len(content.strip()) < 30:
+            raise HTTPException(400, "文章內容太短，無法生成摘要")
+        prompt = _SUMMARY_PROMPT % {"title": title, "content": content}
+        summary = (_call_gemini(prompt, json_mode=False) or "").strip()
+        if not summary:
+            raise HTTPException(502, "Gemini 未回傳摘要內容")
+        conn.execute("UPDATE articles SET summary = ? WHERE id = ?", (summary, aid))
+        return {"summary": summary}
 
 
 # ---------- articles list ----------
@@ -817,6 +852,59 @@ def delete_tag(tid: int):
 @app.get("/healthz")
 def health():
     return {"ok": True}
+
+
+# ---------- 儀表板統計 ----------
+@app.get("/stats")
+def stats():
+    with conn_ctx() as conn:
+        def scalar(sql: str, params=()) -> int:
+            r = conn.execute(sql, params).fetchone()
+            if not r:
+                return 0
+            return list(r.values())[0] or 0
+
+        month_start = "date('now','start of month')"
+        result = {
+            "articles": {
+                "total": scalar("SELECT COUNT(*) FROM articles"),
+                "this_month": scalar(
+                    f"SELECT COUNT(*) FROM articles WHERE created_at >= {month_start}"
+                ),
+                "starred": scalar("SELECT COUNT(*) FROM articles WHERE starred = 1"),
+                "with_cld": scalar(
+                    "SELECT COUNT(*) FROM articles WHERE cld IS NOT NULL AND cld != ''"
+                ),
+            },
+            "reports": {
+                "total": scalar("SELECT COUNT(*) FROM reports"),
+                "this_month": scalar(
+                    f"SELECT COUNT(*) FROM reports WHERE created_at >= {month_start}"
+                ),
+                "starred": scalar("SELECT COUNT(*) FROM reports WHERE starred = 1"),
+            },
+            "links": {"total": scalar("SELECT COUNT(*) FROM links")},
+            "pdfs": {"total": scalar("SELECT COUNT(*) FROM pdfs")},
+            "tags": {"total": scalar("SELECT COUNT(*) FROM tags")},
+        }
+        # 各分類文章數
+        result["categories"] = conn.execute(
+            """SELECT c.id, c.name, COUNT(a.id) AS count
+               FROM categories c
+               LEFT JOIN articles a ON a.category_id = c.id
+               GROUP BY c.id ORDER BY count DESC, c.name"""
+        ).fetchall()
+        # 報告依產業分佈
+        result["sectors"] = conn.execute(
+            """SELECT COALESCE(NULLIF(sector,''),'未分類') AS sector, COUNT(*) AS count
+               FROM reports GROUP BY sector ORDER BY count DESC"""
+        ).fetchall()
+        # 最近更新的文章
+        result["recent_articles"] = conn.execute(
+            """SELECT id, title, author, updated_at FROM articles
+               ORDER BY updated_at DESC LIMIT 8"""
+        ).fetchall()
+        return result
 
 
 # ---------- links CRUD ----------
