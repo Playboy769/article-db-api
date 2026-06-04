@@ -1104,6 +1104,7 @@ body:not(.pdfs-mode) .pdfs-only { display: none !important; }
 .rli-company { font-size:13px; color:var(--sidebar-text); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .report-list-item.active .rli-company { color: var(--accent); }
 .rli-meta { font-size:10px; color:var(--sidebar-muted); margin-top:3px; display:flex; gap:8px; align-items:center; }
+.rli-watch { font-size:9px; color:var(--accent); border:1px solid var(--accent-dim); border-radius:3px; padding:0 4px; font-weight:600; letter-spacing:.03em; vertical-align:middle; }
 .sector-tag { background:rgba(100,160,200,0.2); color:#6ab0d4; padding:2px 6px; border-radius:4px; font-size:10px; }
 
 /* ── Report View ───────────────────────────────────────── */
@@ -2052,6 +2053,95 @@ body.dark .stats-inner { background: #1e1c1a; }
   border: 1px solid var(--border-dark); border-bottom-width: 2px;
   border-radius: 5px; padding: 2px 7px; }
 .shortcut-help-hint { margin-top: 14px; font-size: 11px; color: var(--text-faint); }
+/* ── AI 文章問答 ─────────────────────────────────────────────── */
+#ask-panel { position: fixed; inset: 0; z-index: 9100; background: rgba(0,0,0,.45);
+  display: none; align-items: center; justify-content: center; padding: 20px; }
+#ask-panel.open { display: flex; }
+.ask-card { background: var(--bg-darker); border: 1px solid var(--border-dark);
+  border-radius: 14px; box-shadow: var(--shadow); width: 560px; max-width: 96vw;
+  max-height: 86vh; display: flex; flex-direction: column; overflow: hidden; }
+.ask-head { display: flex; align-items: flex-start; gap: 10px; padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border); }
+.ask-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--accent); }
+.ask-context { font-size: 11.5px; color: var(--text-faint); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 460px; }
+.ask-close { margin-left: auto; background: none; border: none; font-size: 20px;
+  line-height: 1; cursor: pointer; color: var(--text-muted); flex-shrink: 0; }
+.ask-close:hover { color: var(--danger); }
+.ask-answers { flex: 1; overflow-y: auto; padding: 12px 18px; min-height: 80px;
+  display: flex; flex-direction: column; gap: 12px; }
+.ask-empty { color: var(--text-faint); font-size: 12.5px; text-align: center; padding: 22px 0; }
+.ask-qa { border-left: 3px solid var(--accent); padding-left: 12px; }
+.ask-qa-q { font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 5px; }
+.ask-qa-a { font-size: 13px; line-height: 1.75; color: var(--text-muted); white-space: pre-wrap; }
+.ask-loading { color: var(--accent-dim); font-size: 12.5px; }
+.ask-err { color: var(--danger); font-size: 12.5px; }
+.ask-input-row { display: flex; gap: 8px; padding: 12px 18px 16px; border-top: 1px solid var(--border);
+  align-items: flex-end; }
+#ask-q { flex: 1; resize: none; max-height: 120px; font-family: inherit; font-size: 13px;
+  line-height: 1.5; color: var(--text-main); background: var(--bg-light);
+  border: 1px solid var(--border-dark); border-radius: 8px; padding: 9px 11px; outline: none; }
+#ask-q:focus { border-color: var(--accent-dim); }
+.ask-send { flex-shrink: 0; background: var(--accent); color: #fff; border: none;
+  border-radius: 8px; padding: 9px 16px; font-size: 13px; font-family: inherit;
+  cursor: pointer; transition: opacity .12s; }
+.ask-send:hover { opacity: .9; }
+.ask-send:disabled { opacity: .5; cursor: default; }
+body.dark .ask-send { color: #16140f; }
+
+/* ── 觀察清單＋評等追蹤 ───────────────────────────────── */
+.btn-icon.btn-watch.watching { color: var(--accent); border-color: var(--accent); }
+.btn-icon.btn-watch.watching svg circle { fill: var(--accent); }
+.wl-open-btn { margin-left: auto; flex-shrink: 0; background: none;
+  border: 1px solid var(--border-dark); color: var(--sidebar-muted);
+  border-radius: 5px; padding: 3px 9px; font-size: 10px; letter-spacing: .05em;
+  cursor: pointer; transition: all .12s; text-transform: none; font-family: inherit; }
+.wl-open-btn:hover { color: var(--accent); border-color: var(--accent); }
+.wl-open-count { color: var(--accent); font-weight: 700; margin-left: 4px; }
+.wl-open-count:empty { display: none; }
+#watchlist-panel { position: fixed; inset: 0; z-index: 9100; background: rgba(0,0,0,.45);
+  display: none; align-items: center; justify-content: center; padding: 20px; }
+#watchlist-panel.open { display: flex; }
+.wl-card { background: var(--bg-darker); border: 1px solid var(--border-dark);
+  border-radius: 14px; box-shadow: var(--shadow); width: 660px; max-width: 96vw;
+  max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
+.wl-head { display: flex; align-items: flex-start; gap: 10px; padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border); }
+.wl-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--accent); }
+.wl-sub { font-size: 11.5px; color: var(--text-faint); margin-top: 2px; }
+.wl-body { flex: 1; overflow-y: auto; padding: 14px 18px 18px; }
+.wl-empty { color: var(--text-faint); font-size: 12.5px; text-align: center; line-height: 1.9; padding: 30px 10px; }
+.wl-group { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+  margin-bottom: 12px; background: var(--bg-light); }
+.wl-group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.wl-group-name { font-size: 14px; font-weight: 700; color: var(--text-main); }
+.wl-group-ticker { font-size: 11px; color: var(--text-faint); font-weight: 600; }
+.wl-group-sector { font-size: 10px; background: rgba(100,160,200,0.2); color: #6ab0d4;
+  padding: 2px 7px; border-radius: 4px; }
+.wl-remove { margin-left: auto; flex-shrink: 0; background: none; border: 1px solid var(--border-dark);
+  color: var(--text-faint); border-radius: 5px; padding: 3px 9px; font-size: 11px; cursor: pointer; }
+.wl-remove:hover { color: var(--danger); border-color: var(--danger); }
+.wl-latest { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 11.5px; color: var(--text-muted); margin-bottom: 10px; }
+.wl-latest .wl-target { font-weight: 700; color: var(--text-main); }
+.wl-timeline { border-top: 1px dashed var(--border-dark); padding-top: 8px; }
+.wl-row { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0;
+  font-size: 11.5px; border-bottom: 1px solid var(--border); }
+.wl-row:last-child { border-bottom: none; }
+.wl-row-date { flex-shrink: 0; width: 78px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.wl-row-main { flex: 1; min-width: 0; }
+.wl-row-line1 { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.wl-row-analyst { color: var(--text-faint); font-size: 10.5px; }
+.wl-row-target { color: var(--text-muted); }
+.wl-row-chg { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+.wl-chg { font-size: 10px; padding: 1px 7px; border-radius: 4px; font-weight: 600;
+  border: 1px solid transparent; }
+.wl-chg-up   { background: rgba(39,174,96,.13);  color: #2e9e58; border-color: rgba(39,174,96,.3); }
+.wl-chg-down { background: rgba(192,57,43,.12);   color: #c0492f; border-color: rgba(192,57,43,.3); }
+.wl-chg-flat { background: var(--bg-darker); color: var(--text-faint); border-color: var(--border-dark); }
+body.dark .wl-chg-up   { color: #5fcf8a; }
+body.dark .wl-chg-down { color: #e8786a; }
+.wl-noreport { font-size: 11.5px; color: var(--text-faint); font-style: italic; }
 .cld-inner { background: var(--bg-darker); border-radius: 16px;
   width: 900px; max-width: 94vw; height: 640px; max-height: 90vh;
   display: flex; flex-direction: column; overflow: hidden; position: relative;
@@ -2161,6 +2251,20 @@ body.dark .fud-inner { background: #1e1c1a; }
   line-height: 1; font-family: inherit;
 }
 .btn-dark-toggle:hover { border-color: var(--accent); color: var(--accent); }
+/* 強調色主題選擇器 */
+.accent-popover { position: absolute; top: calc(100% + 8px); right: 0; z-index: 950;
+  display: none; background: var(--bg-darker); border: 1px solid var(--border-dark);
+  border-radius: 10px; padding: 10px 12px; box-shadow: var(--shadow); min-width: 150px; }
+.accent-popover.open { display: block; }
+.accent-popover-title { font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  color: var(--text-faint); margin-bottom: 8px; }
+.accent-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.accent-swatch { width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent; padding: 0; transition: transform 0.1s; position: relative; }
+.accent-swatch:hover { transform: scale(1.12); }
+.accent-swatch.active { border-color: var(--text-main); }
+.accent-swatch.active::after { content: ''; position: absolute; inset: 3px;
+  border-radius: 50%; border: 1.5px solid var(--bg-darker); }
 
 /* ── Sort dropdown (垂直 resize handle) ──────────────────────── */
 .sort-wrap {
@@ -2190,6 +2294,26 @@ body.dark .fud-inner { background: #1e1c1a; }
   color: var(--sidebar-muted); cursor: pointer; outline: none;
 }
 .sort-select:hover { color: var(--sidebar-text); }
+
+/* ── 進階篩選列 ──────────────────────────────────────────────── */
+.filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+  padding: 0 14px 8px; }
+.filter-chip { font-size: 10.5px; padding: 2px 9px; border-radius: 11px; cursor: pointer;
+  background: transparent; border: 1px solid var(--border-dark); color: var(--sidebar-muted);
+  font-family: inherit; line-height: 1.6; transition: all 0.12s; }
+.filter-chip:hover { border-color: var(--accent-dim); color: var(--sidebar-text); }
+.filter-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.filter-date { font-size: 10px; color: var(--sidebar-muted); background: transparent;
+  border: 1px solid var(--border-dark); border-radius: 6px; padding: 1px 4px;
+  font-family: inherit; outline: none; max-width: 116px; }
+.filter-date:focus { border-color: var(--accent-dim); }
+.filter-date-sep { font-size: 10px; color: var(--text-faint); }
+.filter-clear { font-size: 10.5px; padding: 2px 8px; border-radius: 11px; cursor: pointer;
+  background: transparent; border: none; color: var(--text-faint); font-family: inherit;
+  margin-left: auto; display: none; }
+.filter-clear:hover { color: var(--danger); }
+.filter-clear.show { display: inline-block; }
+body.dark .filter-chip.on { color: #16140f; }
 
 /* ── Star / Duplicate buttons ───────────────────────────────── */
 .btn-star, .btn-duplicate {
@@ -2399,9 +2523,14 @@ input:-webkit-autofill:focus {
       <div class="brand-title" id="brand-title" style="display:none"></div>
       <div class="brand-sub" id="brand-sub">Article Archive</div>
     </div>
-    <div style="display:flex;gap:6px;flex-shrink:0">
+    <div style="display:flex;gap:6px;flex-shrink:0;position:relative">
+      <button class="btn-dark-toggle" onclick="toggleAccentPicker(event)" title="強調色主題">主題</button>
       <button class="btn-dark-toggle" onclick="toggleShortcutHelp()" title="鍵盤快捷鍵（?）">?</button>
       <button class="btn-dark-toggle" id="dark-toggle" onclick="toggleDarkMode()" title="深色／淺色模式">深色</button>
+      <div id="accent-popover" class="accent-popover">
+        <div class="accent-popover-title">強調色</div>
+        <div class="accent-swatches" id="accent-swatches"></div>
+      </div>
     </div>
   </div>
 
@@ -2448,6 +2577,15 @@ input:-webkit-autofill:focus {
       </select>
       <span class="count-chip" id="count-chip">0</span>
     </div>
+    <div class="filter-bar" id="article-filter-bar">
+      <button class="filter-chip" data-f="star" onclick="toggleFilter('star')">收藏</button>
+      <button class="filter-chip" data-f="notes" onclick="toggleFilter('notes')">有筆記</button>
+      <button class="filter-chip" data-f="cld" onclick="toggleFilter('cld')">因果圖</button>
+      <input type="date" class="filter-date" id="filter-from" onchange="renderList()" title="起始日期（含）">
+      <span class="filter-date-sep">–</span>
+      <input type="date" class="filter-date" id="filter-to" onchange="renderList()" title="結束日期（含）">
+      <button class="filter-clear" id="filter-clear" onclick="clearFilters()" title="清除所有篩選">清除</button>
+    </div>
     <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;">
       <div id="article-list" style="flex:1;overflow-y:auto;padding:0 8px 8px;"></div>
       <div class="recent-section" id="recent-section" style="display:none">
@@ -2469,8 +2607,9 @@ input:-webkit-autofill:focus {
       <button class="btn-new" onclick="showReportForm()">新增報告</button>
     </div>
     <div id="report-sector-tabs" class="folder-tabs"></div>
-    <div class="sidebar-list-header">
+    <div class="sidebar-list-header" style="display:flex;align-items:center;gap:8px">
       <span id="report-list-header-label">所有報告</span> <span class="count-chip" id="report-count-chip">0</span>
+      <button class="wl-open-btn" onclick="openWatchlist()" title="觀察清單與評等追蹤">觀察清單<span class="wl-open-count" id="wl-open-count"></span></button>
     </div>
     <div id="report-list" style="flex:1;overflow-y:auto;padding:0 8px 16px;"></div>
   </div>
@@ -2546,6 +2685,7 @@ input:-webkit-autofill:focus {
         <button class="btn-icon btn-edit" id="btn-notes" onclick="toggleNotes()" title="筆記"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg><span id="notes-badge" class="btn-badge"></span></button>
         <button class="btn-icon btn-edit" id="btn-cld" onclick="openCLD()" title="因果循環圖（AI 分析文章）"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><line x1="8" y1="7.5" x2="11" y2="15.7"/><line x1="16" y1="7.5" x2="13" y2="15.7"/><line x1="8.4" y1="6" x2="15.6" y2="6"/></svg></button>
         <button class="btn-icon btn-edit" id="btn-summary" onclick="generateSummary()" title="AI 摘要（自動生成文章摘要）"><svg viewBox="0 0 24 24"><path d="M4 5h16"/><path d="M4 10h16"/><path d="M4 15h10"/><path d="M17.6 14.4l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg></button>
+        <button class="btn-icon btn-edit" id="btn-ask" onclick="openAsk()" title="AI 問答（針對本文提問）"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7A8.5 8.5 0 0 1 12.5 3 8.38 8.38 0 0 1 21 11.5z"/><path d="M9.5 9.2a2.5 2.5 0 0 1 4.6 1.3c0 1.7-2.4 2-2.4 2"/><line x1="11.7" y1="16.2" x2="11.71" y2="16.2"/></svg></button>
         <div style="display:flex;gap:2px;margin-left:4px;flex-shrink:0">
           <button class="btn-edit btn-text" onclick="changeFontSize(-1)" title="縮小字體">A−</button>
           <button class="btn-edit btn-text" onclick="changeFontSize(1)"  title="放大字體">A+</button>
@@ -2662,6 +2802,7 @@ input:-webkit-autofill:focus {
         <button class="btn-icon btn-edit" onclick="showReportForm(currentReportId)" title="編輯"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
         <button class="btn-icon btn-delete" onclick="deleteReport(currentReportId)" title="刪除"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button>
         <button class="btn-icon btn-star" id="btn-rstar" onclick="toggleReportStar(currentReportId)" title="收藏"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button class="btn-icon btn-watch" id="btn-rwatch" onclick="toggleWatch(currentReportId)" title="加入觀察清單（追蹤此公司評等）"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         <button class="btn-icon btn-duplicate" onclick="duplicateReport(currentReportId)" title="複製"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         <button class="btn-icon btn-edit" id="btn-rhighlight" onclick="toggleHighlighter()" title="螢光筆"><svg viewBox="0 0 24 24"><path d="M6 17l3-3 7-7 3 3-7 7-3 3z"/><path d="M14 7l3 3"/><line x1="3" y1="21" x2="21" y2="21"/></svg></button>
         <button class="btn-icon btn-edit" id="btn-rnotes" onclick="toggleNotes()" title="筆記"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg><span id="rnotes-badge" class="btn-badge"></span></button>
@@ -2994,6 +3135,8 @@ function _apiToArticle(r) {
     images: _parseImages(r.images), image: '',
     tags: r.tags || [],
     starred: r.starred || 0,
+    summary: r.summary || '',
+    cld: r.cld || '',
     notes: r.notes || '[]',
     highlights: r.highlights || '[]',
   };
@@ -3416,6 +3559,41 @@ function applyTagFilter(tag) {
   filterByTag(tag);
 }
 
+// ── 進階篩選 ──────────────────────────────────────────────────
+let _filters = { star: false, notes: false, cld: false };
+function toggleFilter(key) {
+  _filters[key] = !_filters[key];
+  const btn = document.querySelector(`.filter-chip[data-f="${key}"]`);
+  if (btn) btn.classList.toggle('on', _filters[key]);
+  _refreshFilterClear();
+  renderList();
+}
+function clearFilters() {
+  _filters = { star: false, notes: false, cld: false };
+  document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('on'));
+  const f = document.getElementById('filter-from'), t = document.getElementById('filter-to');
+  if (f) f.value = ''; if (t) t.value = '';
+  _refreshFilterClear();
+  renderList();
+}
+function _refreshFilterClear() {
+  const from = document.getElementById('filter-from')?.value || '';
+  const to   = document.getElementById('filter-to')?.value || '';
+  const any  = _filters.star || _filters.notes || _filters.cld || from || to;
+  document.getElementById('filter-clear')?.classList.toggle('show', !!any);
+}
+function _jsonHasItems(s) {
+  if (!s) return false;
+  try { return Array.isArray(JSON.parse(s)) ? JSON.parse(s).length > 0 : false; }
+  catch { return false; }
+}
+function _hasCld(a) {
+  const c = (a.cld || '').trim();
+  if (!c || c === '{}' || c === '[]') return false;
+  try { const o = JSON.parse(c); return !!(o && o.nodes && o.nodes.length); }
+  catch { return c.length > 2; }
+}
+
 function renderList() {
   renderFolders();
 
@@ -3423,6 +3601,10 @@ function renderList() {
   const list = document.getElementById('article-list');
   const chip = document.getElementById('count-chip');
   renderTagSuggestions(q);
+
+  const dFrom = document.getElementById('filter-from')?.value || '';
+  const dTo   = document.getElementById('filter-to')?.value || '';
+  _refreshFilterClear();
 
   const filtered = articles.filter(a => {
     const matchSearch = !q ||
@@ -3437,6 +3619,12 @@ function renderList() {
     else if (currentFolder === '__starred__') matchFolder = !!a.starred;
     else                                    matchFolder = a.folder === currentFolder || (a.folder||'').startsWith(currentFolder + '/');
     const matchTag = !currentTag || (a.tags||[]).includes(currentTag);
+    // 進階篩選
+    if (_filters.star && !a.starred) return false;
+    if (_filters.notes && !(_jsonHasItems(a.notes) || _jsonHasItems(a.highlights))) return false;
+    if (_filters.cld && !_hasCld(a)) return false;
+    if (dFrom && (!a.date || a.date < dFrom)) return false;
+    if (dTo   && (!a.date || a.date > dTo))   return false;
     return matchSearch && matchFolder && matchTag;
   });
 
@@ -3449,7 +3637,9 @@ function renderList() {
   chip.textContent = filtered.length;
 
   if (!filtered.length) {
-    list.innerHTML = `<div class="empty-list">${(q || currentFolder) ? '沒有符合的文章' : '尚無文章<br>按上方按鈕新增'}</div>`;
+    const hasCriteria = q || currentFolder || currentTag || dFrom || dTo
+      || _filters.star || _filters.notes || _filters.cld;
+    list.innerHTML = `<div class="empty-list">${hasCriteria ? '沒有符合的文章' : '尚無文章<br>按上方按鈕新增'}</div>`;
     return;
   }
 
@@ -3968,15 +4158,17 @@ function renderReportList() {
     return matchSearch && matchSector;
   });
 
+  _refreshWatchOpenCount();
   chip.textContent = filtered.length;
   if (!filtered.length) {
     list.innerHTML = `<div class="empty-list">${(q || currentSector) ? '沒有符合的報告' : '尚無報告<br>按上方按鈕新增'}</div>`;
     return;
   }
 
+  const wlSet = new Set(getWatchlist());
   list.innerHTML = filtered.slice().reverse().map(r => `
     <div class="report-list-item ${r.id === currentReportId ? 'active' : ''}" onclick="viewReport(${r.id})">
-      <div class="rli-company">${esc(r.company)}${r.ticker ? ` <span style="font-size:10px;color:var(--sidebar-muted)">${esc(r.ticker)}</span>` : ''}</div>
+      <div class="rli-company">${esc(r.company)}${r.ticker ? ` <span style="font-size:10px;color:var(--sidebar-muted)">${esc(r.ticker)}</span>` : ''}${wlSet.has(_reportKey(r)) ? ` <span class="rli-watch" title="在觀察清單中">觀察中</span>` : ''}</div>
       <div class="rli-meta">
         ${r.sector ? `<span class="sector-tag">${esc(r.sector)}</span>` : ''}
         ${r.rating ? `<span class="rating-badge ${ratingClass(r.rating)}" style="font-size:9px;padding:1px 5px">${esc(r.rating)}</span>` : ''}
@@ -4011,6 +4203,7 @@ function viewReport(id) {
   // 收藏按鈕狀態
   const sbtn = document.getElementById('btn-rstar');
   if (sbtn) sbtn.classList.toggle('starred', !!r.starred);
+  _refreshWatchBtn();
 
   // 字數 / 閱讀時間
   const chars = (r.content || '').replace(/\s/g, '').length;
@@ -4357,6 +4550,51 @@ if (darkMode) {
   document.body.classList.add('dark');
   document.getElementById('dark-toggle').textContent = '淺色';
 }
+
+// ── 強調色主題 ────────────────────────────────────────────────
+const ACCENTS = {
+  gold:   { c: '#c8a96e', d: '#9a7d4e', label: '金' },
+  blue:   { c: '#5a8dd6', d: '#3f6cb0', label: '藍' },
+  teal:   { c: '#3fa39b', d: '#2d7d76', label: '青' },
+  green:  { c: '#6aa85a', d: '#4f8442', label: '綠' },
+  purple: { c: '#9170cc', d: '#6f50a6', label: '紫' },
+  rose:   { c: '#cc6f8e', d: '#a8516e', label: '玫' },
+};
+let accentName = localStorage.getItem('accent') || 'gold';
+function setAccent(name) {
+  const a = ACCENTS[name] || ACCENTS.gold;
+  accentName = ACCENTS[name] ? name : 'gold';
+  document.documentElement.style.setProperty('--accent', a.c);
+  document.documentElement.style.setProperty('--accent-dim', a.d);
+  localStorage.setItem('accent', accentName);
+  document.querySelectorAll('.accent-swatch').forEach(el =>
+    el.classList.toggle('active', el.dataset.accent === accentName));
+}
+function _buildAccentSwatches() {
+  const box = document.getElementById('accent-swatches');
+  if (!box) return;
+  box.innerHTML = Object.entries(ACCENTS).map(([k, a]) =>
+    `<button class="accent-swatch ${k === accentName ? 'active' : ''}" data-accent="${k}" style="background:${a.c}" title="${a.label}" onclick="setAccent('${k}')"></button>`
+  ).join('');
+}
+function toggleAccentPicker(e) {
+  if (e) e.stopPropagation();
+  const p = document.getElementById('accent-popover');
+  if (!p) return;
+  const willOpen = !p.classList.contains('open');
+  p.classList.toggle('open', willOpen);
+  if (willOpen) _buildAccentSwatches();
+}
+document.addEventListener('click', e => {
+  const p = document.getElementById('accent-popover');
+  if (p && p.classList.contains('open')
+      && !e.target.closest('#accent-popover')
+      && !e.target.closest('[onclick*="toggleAccentPicker"]')) {
+    p.classList.remove('open');
+  }
+});
+_buildAccentSwatches();
+setAccent(accentName);
 
 // ── Tag filter ─────────────────────────────────────────────────
 let currentTag = '';
@@ -6601,12 +6839,202 @@ async function generateSummary() {
   }
 }
 
+// ── AI 文章問答 ───────────────────────────────────────────────
+function openAsk() {
+  if (!currentId) { toast('請先開啟一篇文章'); return; }
+  const a = articles.find(x => x.id === currentId);
+  document.getElementById('ask-context').textContent = a ? ('關於：' + (a.title || '')) : '';
+  document.getElementById('ask-q').value = '';
+  const ans = document.getElementById('ask-answer');
+  ans.innerHTML = '<div class="ask-empty">輸入問題，AI 會「只依本文內容」作答。</div>';
+  document.getElementById('ask-panel').classList.add('open');
+  setTimeout(() => document.getElementById('ask-q').focus(), 50);
+}
+function closeAsk() {
+  document.getElementById('ask-panel').classList.remove('open');
+}
+function _askAutoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(120, el.scrollHeight) + 'px';
+}
+function _askKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitAsk(); }
+}
+async function submitAsk() {
+  const qEl = document.getElementById('ask-q');
+  const q = (qEl.value || '').trim();
+  if (!q) { toast('請輸入問題'); return; }
+  if (!currentId) { toast('請先開啟一篇文章'); return; }
+  const ans = document.getElementById('ask-answer');
+  const sendBtn = document.getElementById('ask-send');
+  const empty = ans.querySelector('.ask-empty');
+  if (empty) empty.remove();
+  const block = document.createElement('div');
+  block.className = 'ask-qa';
+  block.innerHTML = '<div class="ask-qa-q"></div><div class="ask-qa-a ask-loading">AI 思考中…</div>';
+  block.querySelector('.ask-qa-q').textContent = q;
+  ans.insertBefore(block, ans.firstChild);
+  qEl.value = ''; _askAutoGrow(qEl);
+  sendBtn.disabled = true;
+  try {
+    const res = await _apiPost(`/articles/${currentId}/ask`, { question: q });
+    const aEl = block.querySelector('.ask-qa-a');
+    aEl.classList.remove('ask-loading');
+    if (res.detail) { aEl.classList.add('ask-err'); aEl.textContent = '問答失敗：' + res.detail; }
+    else { aEl.textContent = (res.answer || '').trim() || '（無回覆）'; }
+  } catch (e) {
+    const aEl = block.querySelector('.ask-qa-a');
+    aEl.classList.remove('ask-loading'); aEl.classList.add('ask-err');
+    aEl.textContent = '問答失敗：' + (e.message || e);
+  } finally {
+    sendBtn.disabled = false;
+    qEl.focus();
+  }
+}
+
+// ── 觀察清單＋評等追蹤 ─────────────────────────────────────────
+const _RATING_RANK = { '強力買入':5, '買入':4, '中立':3, '賣出':2, '強力賣出':1 };
+function _ratingRank(r) { return _RATING_RANK[r] || 0; }
+function _reportKey(r) {
+  if (!r) return '';
+  return (r.ticker || '').trim().toUpperCase() || (r.company || '').trim();
+}
+function getWatchlist() {
+  try { const a = JSON.parse(localStorage.getItem('watchlist') || '[]'); return Array.isArray(a) ? a : []; }
+  catch (e) { return []; }
+}
+function _saveWatchlist(arr) {
+  localStorage.setItem('watchlist', JSON.stringify(arr));
+  _refreshWatchOpenCount();
+}
+function isWatched(r) {
+  const k = _reportKey(r);
+  return !!k && getWatchlist().includes(k);
+}
+function toggleWatch(id) {
+  const r = reports.find(x => x.id === id);
+  if (!r) { toast('請先開啟一份報告'); return; }
+  const k = _reportKey(r);
+  if (!k) { toast('此報告缺少公司／代碼，無法加入'); return; }
+  const wl = getWatchlist();
+  const idx = wl.indexOf(k);
+  if (idx >= 0) { wl.splice(idx, 1); toast('已移出觀察清單'); }
+  else { wl.push(k); toast('已加入觀察清單'); }
+  _saveWatchlist(wl);
+  _refreshWatchBtn();
+  if (document.getElementById('watchlist-panel')?.classList.contains('open')) renderWatchlist();
+}
+function removeWatch(key) {
+  _saveWatchlist(getWatchlist().filter(k => k !== key));
+  _refreshWatchBtn();
+  renderWatchlist();
+}
+function _refreshWatchBtn() {
+  const btn = document.getElementById('btn-rwatch');
+  if (!btn) return;
+  const on = isWatched(reports.find(x => x.id === currentReportId));
+  btn.classList.toggle('watching', on);
+  btn.title = on ? '已在觀察清單（點擊移除）' : '加入觀察清單（追蹤此公司評等）';
+}
+function _refreshWatchOpenCount() {
+  const el = document.getElementById('wl-open-count');
+  if (el) el.textContent = getWatchlist().length || '';
+}
+function _parseTarget(t) {
+  if (t == null) return null;
+  const m = String(t).replace(/,/g, '').match(/-?\d+(\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+function _fmtNum(n) {
+  const s = Math.abs(n);
+  return Number.isInteger(s) ? String(s) : s.toFixed(2).replace(/\.?0+$/, '');
+}
+function _wlChangeChips(cur, prev) {
+  if (!prev) return '';
+  const chips = [];
+  const cr = _ratingRank(cur.rating), pr = _ratingRank(prev.rating);
+  if (cur.rating && prev.rating && cur.rating !== prev.rating) {
+    const cls = cr > pr ? 'wl-chg-up' : (cr < pr ? 'wl-chg-down' : 'wl-chg-flat');
+    const word = cr > pr ? '升評' : (cr < pr ? '降評' : '調整');
+    chips.push(`<span class="wl-chg ${cls}">${word}：${esc(prev.rating)}→${esc(cur.rating)}</span>`);
+  }
+  const ct = _parseTarget(cur.target), pt = _parseTarget(prev.target);
+  if (ct != null && pt != null && ct !== pt) {
+    const diff = ct - pt;
+    const cls = diff > 0 ? 'wl-chg-up' : 'wl-chg-down';
+    const sign = diff > 0 ? '+' : '−';
+    let label = `目標 ${sign}${_fmtNum(diff)}`;
+    if (pt !== 0) label += `（${sign}${Math.abs(diff / pt * 100).toFixed(1)}%）`;
+    chips.push(`<span class="wl-chg ${cls}">${label}</span>`);
+  }
+  return chips.length ? `<div class="wl-row-chg">${chips.join('')}</div>` : '';
+}
+function openWatchlist() {
+  renderWatchlist();
+  document.getElementById('watchlist-panel').classList.add('open');
+}
+function closeWatchlist() {
+  document.getElementById('watchlist-panel')?.classList.remove('open');
+}
+function renderWatchlist() {
+  const body = document.getElementById('wl-body');
+  const sub = document.getElementById('wl-sub');
+  const wl = getWatchlist();
+  if (!wl.length) {
+    sub.textContent = '';
+    body.innerHTML = '<div class="wl-empty">觀察清單是空的。<br>開啟任一份報告，點工具列的「眼睛」圖示即可加入追蹤，<br>之後便能在此比較同一家公司歷次的評等與目標價變化。</div>';
+    return;
+  }
+  const byKey = {};
+  reports.forEach(r => { const k = _reportKey(r); if (k) (byKey[k] = byKey[k] || []).push(r); });
+  let totalReports = 0;
+  const html = wl.map(key => {
+    const list = (byKey[key] || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    totalReports += list.length;
+    const latest = list[list.length - 1];
+    const name = latest ? latest.company : key;
+    const ticker = latest ? latest.ticker : '';
+    const sector = latest ? latest.sector : '';
+    const head = `<div class="wl-group-head">
+        <span class="wl-group-name">${esc(name || key)}</span>
+        ${ticker ? `<span class="wl-group-ticker">${esc(ticker)}</span>` : ''}
+        ${sector ? `<span class="wl-group-sector">${esc(sector)}</span>` : ''}
+        <button class="wl-remove" data-key="${escAttr(key)}" onclick="removeWatch(this.dataset.key)" title="從觀察清單移除">移除</button>
+      </div>`;
+    if (!list.length) {
+      return `<div class="wl-group">${head}<div class="wl-noreport">尚無報告資料（已加入追蹤；新增此公司報告後將顯示變化）</div></div>`;
+    }
+    const latestRating = latest.rating
+      ? `<span class="rating-badge ${ratingClass(latest.rating)}" style="font-size:10px;padding:2px 8px">${esc(latest.rating)}</span>`
+      : '<span style="color:var(--text-faint)">未評等</span>';
+    const latestTarget = latest.target ? `<span class="wl-target">目標 ${esc(latest.target)}</span>` : '';
+    const summary = `<div class="wl-latest">最新：${latestRating}${latestTarget}<span>${esc(latest.date || '')}</span>${latest.analyst ? `<span class="wl-row-analyst">${esc(latest.analyst)}</span>` : ''}<span style="color:var(--text-faint)">· 共 ${list.length} 份</span></div>`;
+    const desc = list.slice().reverse();
+    const rows = desc.map((r, i) => {
+      const prev = desc[i + 1];
+      const ratingBadge = r.rating ? `<span class="rating-badge ${ratingClass(r.rating)}" style="font-size:9px;padding:1px 6px">${esc(r.rating)}</span>` : '<span style="color:var(--text-faint);font-size:10.5px">未評等</span>';
+      const target = r.target ? `<span class="wl-row-target">目標 ${esc(r.target)}</span>` : '';
+      const analyst = r.analyst ? `<span class="wl-row-analyst">${esc(r.analyst)}</span>` : '';
+      return `<div class="wl-row">
+          <div class="wl-row-date">${esc(r.date || '—')}</div>
+          <div class="wl-row-main">
+            <div class="wl-row-line1">${ratingBadge}${target}${analyst}</div>
+            ${_wlChangeChips(r, prev)}
+          </div>
+        </div>`;
+    }).join('');
+    return `<div class="wl-group">${head}${summary}<div class="wl-timeline">${rows}</div></div>`;
+  }).join('');
+  sub.textContent = `${wl.length} 家公司 · ${totalReports} 份報告`;
+  body.innerHTML = html;
+}
+
 // ── 鍵盤快捷鍵 ────────────────────────────────────────────────
 function toggleShortcutHelp() {
   document.getElementById('shortcut-help')?.classList.toggle('open');
 }
 function _anyOverlayOpen() {
-  const open = ['fetch-url-dialog','stats-panel','notes-search-panel','cld-panel']
+  const open = ['fetch-url-dialog','stats-panel','notes-search-panel','cld-panel','ask-panel','watchlist-panel']
     .some(id => document.getElementById(id)?.classList.contains('open'));
   const lb = document.getElementById('lightbox')?.classList.contains('show');
   return open || lb;
@@ -6707,7 +7135,7 @@ async function doFetchUrl() {
   finally { btn.textContent = '抓取'; btn.disabled = false; }
 }
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { hideFetchUrlDialog(); closeStats(); closeCLD(); }
+  if (e.key === 'Escape') { hideFetchUrlDialog(); closeStats(); closeCLD(); closeAsk(); closeWatchlist(); }
 });
 
 // ── 因果循環圖 (CLD) ──────────────────────────────────────────
@@ -7071,6 +7499,38 @@ function downloadCLD() {
     <div class="shortcut-row"><kbd>?</kbd><span>顯示 / 關閉本說明</span></div>
     <div class="shortcut-row"><kbd>Esc</kbd><span>關閉視窗 / 退出全螢幕</span></div>
     <div class="shortcut-help-hint">在輸入框打字時，快捷鍵不會觸發</div>
+  </div>
+</div>
+
+<!-- AI 文章問答 -->
+<div id="ask-panel" onclick="if(event.target===this)closeAsk()">
+  <div class="ask-card">
+    <div class="ask-head">
+      <div style="min-width:0">
+        <div class="ask-title">AI 問答</div>
+        <div class="ask-context" id="ask-context"></div>
+      </div>
+      <button class="ask-close" onclick="closeAsk()" title="關閉">×</button>
+    </div>
+    <div class="ask-answers" id="ask-answer"></div>
+    <div class="ask-input-row">
+      <textarea id="ask-q" rows="1" placeholder="針對這篇文章提問…（Enter 送出，Shift+Enter 換行）" oninput="_askAutoGrow(this)" onkeydown="_askKey(event)"></textarea>
+      <button class="ask-send" id="ask-send" onclick="submitAsk()">送出</button>
+    </div>
+  </div>
+</div>
+
+<!-- 觀察清單＋評等追蹤 -->
+<div id="watchlist-panel" onclick="if(event.target===this)closeWatchlist()">
+  <div class="wl-card">
+    <div class="wl-head">
+      <div style="min-width:0">
+        <div class="wl-title">觀察清單</div>
+        <div class="wl-sub" id="wl-sub"></div>
+      </div>
+      <button class="ask-close" onclick="closeWatchlist()" title="關閉">×</button>
+    </div>
+    <div class="wl-body" id="wl-body"></div>
   </div>
 </div>
 

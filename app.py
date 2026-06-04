@@ -535,6 +535,53 @@ def generate_summary(aid: int):
         return {"summary": summary}
 
 
+# ---------- AI 文章問答 ----------
+class AskIn(BaseModel):
+    question: str
+
+
+_ASK_PROMPT = """你是嚴謹的研究助理。請「只根據」以下文章內容，用繁體中文回答使用者的問題。
+
+要求：
+- 只依文章內容作答；若文章未提供足夠資訊，直接說「文章未提及」，不要臆測或補充外部知識。
+- 回答精簡、切中要點，必要時可條列。
+- 只回傳純文字答案，不要 JSON、不要 markdown 標題。
+
+文章標題：%(title)s
+
+文章內容：
+%(content)s
+
+使用者問題：%(question)s
+"""
+
+
+@app.post("/articles/{aid}/ask")
+def ask_article(aid: int, body: AskIn):
+    question = (body.question or "").strip()
+    if not question:
+        raise HTTPException(400, "請輸入問題")
+    if len(question) > 500:
+        raise HTTPException(400, "問題過長，請精簡至 500 字內")
+    with conn_ctx() as conn:
+        row = conn.execute(
+            "SELECT title, content FROM articles WHERE id = ?", (aid,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "not found")
+        title = row["title"] or ""
+        content = (row["content"] or "")[:12000]
+        if len(content.strip()) < 20:
+            raise HTTPException(400, "文章內容太短，無法問答")
+        prompt = _ASK_PROMPT % {
+            "title": title, "content": content, "question": question
+        }
+        answer = (_call_gemini(prompt, json_mode=False) or "").strip()
+        if not answer:
+            raise HTTPException(502, "Gemini 未回傳答案")
+        return {"answer": answer}
+
+
 # ---------- articles list ----------
 @app.get("/articles")
 def list_articles(
