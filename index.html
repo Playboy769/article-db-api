@@ -2608,8 +2608,24 @@ input:-webkit-autofill:focus {
     </div>
     <div id="report-sector-tabs" class="folder-tabs"></div>
     <div class="sidebar-list-header" style="display:flex;align-items:center;gap:8px">
-      <span id="report-list-header-label">所有報告</span> <span class="count-chip" id="report-count-chip">0</span>
+      <span id="report-list-header-label" style="flex:1">所有報告</span>
+      <select class="sort-select" id="report-sort-select" onchange="renderReportList()">
+        <option value="newest">最新</option>
+        <option value="oldest">最舊</option>
+        <option value="company">公司 A-Z</option>
+        <option value="rating">評等高→低</option>
+      </select>
+      <span class="count-chip" id="report-count-chip">0</span>
       <button class="wl-open-btn" onclick="openWatchlist()" title="觀察清單與評等追蹤">觀察清單<span class="wl-open-count" id="wl-open-count"></span></button>
+    </div>
+    <div class="filter-bar" id="report-filter-bar">
+      <button class="filter-chip" data-rf="star" onclick="toggleReportFilter('star')">收藏</button>
+      <button class="filter-chip" data-rf="notes" onclick="toggleReportFilter('notes')">有筆記</button>
+      <button class="filter-chip" data-rf="cld" onclick="toggleReportFilter('cld')">因果圖</button>
+      <input type="date" class="filter-date" id="report-filter-from" onchange="renderReportList()" title="起始日期（含）">
+      <span class="filter-date-sep">–</span>
+      <input type="date" class="filter-date" id="report-filter-to" onchange="renderReportList()" title="結束日期（含）">
+      <button class="filter-clear" id="report-filter-clear" onclick="clearReportFilters()" title="清除所有篩選">清除</button>
     </div>
     <div id="report-list" style="flex:1;overflow-y:auto;padding:0 8px 16px;"></div>
   </div>
@@ -2806,6 +2822,9 @@ input:-webkit-autofill:focus {
         <button class="btn-icon btn-duplicate" onclick="duplicateReport(currentReportId)" title="複製"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         <button class="btn-icon btn-edit" id="btn-rhighlight" onclick="toggleHighlighter()" title="螢光筆"><svg viewBox="0 0 24 24"><path d="M6 17l3-3 7-7 3 3-7 7-3 3z"/><path d="M14 7l3 3"/><line x1="3" y1="21" x2="21" y2="21"/></svg></button>
         <button class="btn-icon btn-edit" id="btn-rnotes" onclick="toggleNotes()" title="筆記"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg><span id="rnotes-badge" class="btn-badge"></span></button>
+        <button class="btn-icon btn-edit" id="btn-rcld" onclick="openReportCLD()" title="因果循環圖（AI 分析報告）"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><line x1="8" y1="7.5" x2="11" y2="15.7"/><line x1="16" y1="7.5" x2="13" y2="15.7"/><line x1="8.4" y1="6" x2="15.6" y2="6"/></svg></button>
+        <button class="btn-icon btn-edit" id="btn-rsummary" onclick="generateReportSummary()" title="AI 摘要（自動生成報告摘要）"><svg viewBox="0 0 24 24"><path d="M4 5h16"/><path d="M4 10h16"/><path d="M4 15h10"/><path d="M17.6 14.4l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg></button>
+        <button class="btn-icon btn-edit" id="btn-rask" onclick="openReportAsk()" title="AI 問答（針對本報告提問）"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7A8.5 8.5 0 0 1 12.5 3 8.38 8.38 0 0 1 21 11.5z"/><path d="M9.5 9.2a2.5 2.5 0 0 1 4.6 1.3c0 1.7-2.4 2-2.4 2"/><line x1="11.7" y1="16.2" x2="11.71" y2="16.2"/></svg></button>
         <div style="display:flex;gap:2px;margin-left:4px;flex-shrink:0">
           <button class="btn-edit btn-text" onclick="changeFontSize(-1)" title="縮小字體">A−</button>
           <button class="btn-edit btn-text" onclick="changeFontSize(1)"  title="放大字體">A+</button>
@@ -2825,6 +2844,7 @@ input:-webkit-autofill:focus {
         <span id="r-word-count-bar" class="byline-item byline-reading"></span>
       </div>
       <div class="article-scroll-body">
+        <div id="rv-summary" class="article-summary-box" style="display:none"></div>
         <div id="report-view-image-gallery" class="image-gallery"></div>
         <div class="report-content-display" id="rv-content"></div>
       </div>
@@ -3150,6 +3170,9 @@ function _apiToReport(r) {
     content: r.content || '', images: _parseImages(r.images), image: '',
     notes: r.notes || '[]',
     highlights: r.highlights || '[]',
+    starred: r.starred || 0,
+    summary: r.summary || '',
+    cld: r.cld || '',
   };
 }
 
@@ -3570,7 +3593,7 @@ function toggleFilter(key) {
 }
 function clearFilters() {
   _filters = { star: false, notes: false, cld: false };
-  document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('#article-filter-bar .filter-chip').forEach(b => b.classList.remove('on'));
   const f = document.getElementById('filter-from'), t = document.getElementById('filter-to');
   if (f) f.value = ''; if (t) t.value = '';
   _refreshFilterClear();
@@ -4140,12 +4163,40 @@ function ratingClass(r) {
   return {'強力買入':'r-strong-buy','買入':'r-buy','中立':'r-neutral','賣出':'r-sell','強力賣出':'r-strong-sell'}[r] || 'r-neutral';
 }
 
+// ── 報告進階篩選 ──────────────────────────────────────────────
+let _rFilters = { star: false, notes: false, cld: false };
+function toggleReportFilter(key) {
+  _rFilters[key] = !_rFilters[key];
+  const btn = document.querySelector(`.filter-chip[data-rf="${key}"]`);
+  if (btn) btn.classList.toggle('on', _rFilters[key]);
+  _refreshReportFilterClear();
+  renderReportList();
+}
+function clearReportFilters() {
+  _rFilters = { star: false, notes: false, cld: false };
+  document.querySelectorAll('#report-filter-bar .filter-chip').forEach(b => b.classList.remove('on'));
+  const f = document.getElementById('report-filter-from'), t = document.getElementById('report-filter-to');
+  if (f) f.value = ''; if (t) t.value = '';
+  _refreshReportFilterClear();
+  renderReportList();
+}
+function _refreshReportFilterClear() {
+  const from = document.getElementById('report-filter-from')?.value || '';
+  const to   = document.getElementById('report-filter-to')?.value || '';
+  const any  = _rFilters.star || _rFilters.notes || _rFilters.cld || from || to;
+  document.getElementById('report-filter-clear')?.classList.toggle('show', !!any);
+}
+
 function renderReportList() {
   renderReportSectors();
 
   const q    = (document.getElementById('report-search-input').value || '').toLowerCase();
   const list = document.getElementById('report-list');
   const chip = document.getElementById('report-count-chip');
+
+  const dFrom = document.getElementById('report-filter-from')?.value || '';
+  const dTo   = document.getElementById('report-filter-to')?.value || '';
+  _refreshReportFilterClear();
 
   const filtered = reports.filter(r => {
     const matchSearch = !q ||
@@ -4155,18 +4206,31 @@ function renderReportList() {
       (r.analyst||'').toLowerCase().includes(q) ||
       (r.content||'').toLowerCase().includes(q);
     const matchSector = !currentSector || r.sector === currentSector;
+    if (_rFilters.star && !r.starred) return false;
+    if (_rFilters.notes && !(_jsonHasItems(r.notes) || _jsonHasItems(r.highlights))) return false;
+    if (_rFilters.cld && !_hasCld(r)) return false;
+    if (dFrom && (!r.date || r.date < dFrom)) return false;
+    if (dTo   && (!r.date || r.date > dTo))   return false;
     return matchSearch && matchSector;
   });
+
+  const sortMode = document.getElementById('report-sort-select')?.value || 'newest';
+  let toRender = filtered.slice();
+  if      (sortMode === 'oldest')  toRender.reverse();
+  else if (sortMode === 'company') toRender.sort((a,b) => (a.company||'').localeCompare(b.company||'', 'zh'));
+  else if (sortMode === 'rating')  toRender.sort((a,b) => _ratingRank(b.rating) - _ratingRank(a.rating));
+  // 'newest' = 陣列原順序（API created_at DESC，新→舊）
 
   _refreshWatchOpenCount();
   chip.textContent = filtered.length;
   if (!filtered.length) {
-    list.innerHTML = `<div class="empty-list">${(q || currentSector) ? '沒有符合的報告' : '尚無報告<br>按上方按鈕新增'}</div>`;
+    const hasCriteria = q || currentSector || dFrom || dTo || _rFilters.star || _rFilters.notes || _rFilters.cld;
+    list.innerHTML = `<div class="empty-list">${hasCriteria ? '沒有符合的報告' : '尚無報告<br>按上方按鈕新增'}</div>`;
     return;
   }
 
   const wlSet = new Set(getWatchlist());
-  list.innerHTML = filtered.slice().reverse().map(r => `
+  list.innerHTML = toRender.map(r => `
     <div class="report-list-item ${r.id === currentReportId ? 'active' : ''}" onclick="viewReport(${r.id})">
       <div class="rli-company">${esc(r.company)}${r.ticker ? ` <span style="font-size:10px;color:var(--sidebar-muted)">${esc(r.ticker)}</span>` : ''}${wlSet.has(_reportKey(r)) ? ` <span class="rli-watch" title="在觀察清單中">觀察中</span>` : ''}</div>
       <div class="rli-meta">
@@ -4223,6 +4287,7 @@ function viewReport(id) {
     srcEl.textContent = src;
   }
 
+  renderSummary(r.summary || '', 'rv-summary');
   document.getElementById('rv-content').innerHTML = mdLatex(r.content || '');
   applyLatex(document.getElementById('rv-content'));
   renderViewGallery('report-view-image-gallery', getImages(r));
@@ -6806,8 +6871,8 @@ function closeStats() {
 }
 
 // ── AI 摘要 ───────────────────────────────────────────────────
-function renderSummary(summary) {
-  const box = document.getElementById('view-summary');
+function renderSummary(summary, boxId = 'view-summary') {
+  const box = document.getElementById(boxId);
   if (!box) return;
   if (summary && summary.trim()) {
     box.innerHTML = `<span class="summary-label">AI 摘要</span>${esc(summary)}`;
@@ -6838,18 +6903,46 @@ async function generateSummary() {
     btn?.classList.remove('active');
   }
 }
+async function generateReportSummary() {
+  if (!currentReportId) { toast('請先開啟一份報告'); return; }
+  const r = reports.find(x => x.id === currentReportId);
+  if (r && r.summary && r.summary.trim()
+      && !confirm('此報告已有摘要，要重新生成並覆蓋嗎？')) return;
+  const btn = document.getElementById('btn-rsummary');
+  btn?.classList.add('active');
+  toast('AI 生成摘要中…');
+  try {
+    const res = await _apiPost(`/reports/${currentReportId}/generate-summary`, {});
+    if (res.detail) { toast('摘要生成失敗：' + res.detail); return; }
+    const summary = (res.summary || '').trim();
+    if (r) r.summary = summary;
+    renderSummary(summary, 'rv-summary');
+    toast('✓ 摘要已生成');
+  } catch (e) {
+    toast('摘要生成失敗：' + (e.message || e));
+  } finally {
+    btn?.classList.remove('active');
+  }
+}
 
-// ── AI 文章問答 ───────────────────────────────────────────────
-function openAsk() {
-  if (!currentId) { toast('請先開啟一篇文章'); return; }
-  const a = articles.find(x => x.id === currentId);
-  document.getElementById('ask-context').textContent = a ? ('關於：' + (a.title || '')) : '';
+// ── AI 問答（文章／報告共用）─────────────────────────────────
+let _askCtx = null;   // {type:'article'|'report', id, title}
+function _openAskFor(type) {
+  const isReport = type === 'report';
+  const id = isReport ? currentReportId : currentId;
+  if (!id) { toast(isReport ? '請先開啟一份報告' : '請先開啟一篇文章'); return; }
+  const obj = (isReport ? reports : articles).find(x => x.id === id);
+  const title = obj ? (isReport ? (obj.company || '') : (obj.title || '')) : '';
+  _askCtx = { type: isReport ? 'report' : 'article', id, title };
+  document.getElementById('ask-context').textContent = title ? ('關於：' + title) : '';
   document.getElementById('ask-q').value = '';
   const ans = document.getElementById('ask-answer');
-  ans.innerHTML = '<div class="ask-empty">輸入問題，AI 會「只依本文內容」作答。</div>';
+  ans.innerHTML = `<div class="ask-empty">輸入問題，AI 會「只依本${isReport ? '報告' : '文'}內容」作答。</div>`;
   document.getElementById('ask-panel').classList.add('open');
   setTimeout(() => document.getElementById('ask-q').focus(), 50);
 }
+function openAsk() { _openAskFor('article'); }
+function openReportAsk() { _openAskFor('report'); }
 function closeAsk() {
   document.getElementById('ask-panel').classList.remove('open');
 }
@@ -6864,7 +6957,7 @@ async function submitAsk() {
   const qEl = document.getElementById('ask-q');
   const q = (qEl.value || '').trim();
   if (!q) { toast('請輸入問題'); return; }
-  if (!currentId) { toast('請先開啟一篇文章'); return; }
+  if (!_askCtx || !_askCtx.id) { toast('請先開啟項目'); return; }
   const ans = document.getElementById('ask-answer');
   const sendBtn = document.getElementById('ask-send');
   const empty = ans.querySelector('.ask-empty');
@@ -6877,7 +6970,8 @@ async function submitAsk() {
   qEl.value = ''; _askAutoGrow(qEl);
   sendBtn.disabled = true;
   try {
-    const res = await _apiPost(`/articles/${currentId}/ask`, { question: q });
+    const base = _askCtx.type === 'report' ? 'reports' : 'articles';
+    const res = await _apiPost(`/${base}/${_askCtx.id}/ask`, { question: q });
     const aEl = block.querySelector('.ask-qa-a');
     aEl.classList.remove('ask-loading');
     if (res.detail) { aEl.classList.add('ask-err'); aEl.textContent = '問答失敗：' + res.detail; }
@@ -7142,15 +7236,21 @@ document.addEventListener('keydown', e => {
 let _cldData = null;          // 目前的 {nodes, edges, loops}
 let _cldMode = 'view';        // 'view' | 'connect' | 'delete'
 let _cldConnectFrom = null;   // 連線模式下已選的來源節點 id
+let _cldDoc = null;           // {type:'article'|'report', id}
 
-function openCLD() {
-  if (!currentId) { toast('請先開啟一篇文章'); return; }
-  const a = articles.find(x => x.id === currentId);
-  if (!a) return;
+function _cldNoun() { return (_cldDoc && _cldDoc.type === 'report') ? '報告' : '文章'; }
+
+function _openCLDFor(type) {
+  const isReport = type === 'report';
+  const id = isReport ? currentReportId : currentId;
+  if (!id) { toast(isReport ? '請先開啟一份報告' : '請先開啟一篇文章'); return; }
+  const obj = (isReport ? reports : articles).find(x => x.id === id);
+  if (!obj) return;
+  _cldDoc = { type: isReport ? 'report' : 'article', id };
   document.getElementById('cld-panel').classList.add('open');
   _cldMode = 'view'; _cldConnectFrom = null;
   let cld = null;
-  try { cld = a.cld ? JSON.parse(a.cld) : null; } catch(e) {}
+  try { cld = obj.cld ? JSON.parse(obj.cld) : null; } catch(e) {}
   if (cld && cld.nodes && cld.nodes.length) {
     _cldData = cld;
     renderCLD();
@@ -7159,6 +7259,8 @@ function openCLD() {
     showCLDEmpty();
   }
 }
+function openCLD() { _openCLDFor('article'); }
+function openReportCLD() { _openCLDFor('report'); }
 function closeCLD() {
   document.getElementById('cld-panel').classList.remove('open');
 }
@@ -7172,7 +7274,7 @@ function showCLDEmpty() {
   document.getElementById('cld-body').innerHTML =
     `<div class="cld-empty">
        <div class="cld-big">🔄</div>
-       <div>還沒有因果循環圖<br>AI 會分析這篇文章，萃取出關鍵變數與因果關係</div>
+       <div>還沒有因果循環圖<br>AI 會分析${_cldNoun()}內容，萃取出關鍵變數與因果關係</div>
        <button class="cld-btn primary" onclick="generateCLD()">用 AI 生成因果圖</button>
      </div>`;
 }
@@ -7181,14 +7283,15 @@ function showCLDLoading() {
   document.getElementById('cld-body').innerHTML =
     `<div class="cld-empty">
        <div class="cld-spinner"></div>
-       <div>AI 正在分析文章、建構因果關係…<br><span style="font-size:11px;opacity:.7">約需 10–20 秒</span></div>
+       <div>AI 正在分析${_cldNoun()}、建構因果關係…<br><span style="font-size:11px;opacity:.7">約需 10–20 秒</span></div>
      </div>`;
 }
 async function generateCLD() {
-  if (!currentId) return;
+  if (!_cldDoc) return;
   showCLDLoading();
   try {
-    const res = await fetch(`${API_BASE}/articles/${currentId}/generate-cld`, { method: 'POST' });
+    const base = _cldDoc.type === 'report' ? 'reports' : 'articles';
+    const res = await fetch(`${API_BASE}/${base}/${_cldDoc.id}/generate-cld`, { method: 'POST' });
     const data = await res.json();
     if (!res.ok) {
       const msg = data && data.detail ? data.detail : ('HTTP ' + res.status);
@@ -7198,7 +7301,8 @@ async function generateCLD() {
          <button class="cld-btn" onclick="showCLDEmpty()">返回</button></div>`;
       return;
     }
-    const a = articles.find(x => x.id === currentId);
+    const coll = _cldDoc.type === 'report' ? reports : articles;
+    const a = coll.find(x => x.id === _cldDoc.id);
     if (a) a.cld = JSON.stringify(data);
     _cldData = data;
     _cldMode = 'view'; _cldConnectFrom = null;
@@ -7214,11 +7318,13 @@ async function generateCLD() {
 
 // 把目前 _cldData 存回雲端 + 記憶體
 async function cldSaveData() {
-  if (!currentId || !_cldData) return;
+  if (!_cldDoc || !_cldData) return;
   const json = JSON.stringify(_cldData);
-  const a = articles.find(x => x.id === currentId);
+  const base = _cldDoc.type === 'report' ? 'reports' : 'articles';
+  const coll = _cldDoc.type === 'report' ? reports : articles;
+  const a = coll.find(x => x.id === _cldDoc.id);
   if (a) a.cld = json;
-  try { await _apiPatch(`/articles/${currentId}`, { cld: json }); }
+  try { await _apiPatch(`/${base}/${_cldDoc.id}`, { cld: json }); }
   catch(e) { console.warn('[cld] save failed', e); }
 }
 

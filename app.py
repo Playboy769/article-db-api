@@ -50,6 +50,8 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE reports ADD COLUMN starred INTEGER DEFAULT 0",
             "ALTER TABLE reports ADD COLUMN highlights TEXT DEFAULT '[]'",
             "ALTER TABLE reports ADD COLUMN notes TEXT DEFAULT '[]'",
+            "ALTER TABLE reports ADD COLUMN summary TEXT",
+            "ALTER TABLE reports ADD COLUMN cld TEXT DEFAULT ''",
             # PDF library
             """CREATE TABLE IF NOT EXISTS pdfs (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -191,6 +193,8 @@ class ReportUpdate(BaseModel):
     starred: Optional[int] = None
     highlights: Optional[str] = None
     notes: Optional[str] = None
+    summary: Optional[str] = None
+    cld: Optional[str] = None
 
 
 class LinkIn(BaseModel):
@@ -727,7 +731,7 @@ def update_report(rid: int, u: ReportUpdate):
         fields, values = [], []
         for k in ("company", "ticker", "sector", "rating", "target",
                   "date", "analyst", "source", "content", "images",
-                  "starred", "highlights", "notes"):
+                  "starred", "highlights", "notes", "summary", "cld"):
             v = getattr(u, k)
             if v is not None:
                 fields.append(f"{k} = ?")
@@ -743,6 +747,75 @@ def delete_report(rid: int):
     with conn_ctx() as conn:
         conn.execute("DELETE FROM reports WHERE id = ?", (rid,))
     return {"ok": True}
+
+
+# ---------- 報告 AI：摘要 / 問答 / 因果圖 ----------
+@app.post("/reports/{rid}/generate-summary")
+def generate_report_summary(rid: int):
+    with conn_ctx() as conn:
+        row = conn.execute(
+            "SELECT company, content FROM reports WHERE id = ?", (rid,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "not found")
+        title = row["company"] or ""
+        content = (row["content"] or "")[:12000]
+        if len(content.strip()) < 30:
+            raise HTTPException(400, "報告內容太短，無法生成摘要")
+        prompt = _SUMMARY_PROMPT % {"title": title, "content": content}
+        summary = (_call_gemini(prompt, json_mode=False) or "").strip()
+        if not summary:
+            raise HTTPException(502, "Gemini 未回傳摘要內容")
+        conn.execute("UPDATE reports SET summary = ? WHERE id = ?", (summary, rid))
+        return {"summary": summary}
+
+
+@app.post("/reports/{rid}/ask")
+def ask_report(rid: int, body: AskIn):
+    question = (body.question or "").strip()
+    if not question:
+        raise HTTPException(400, "請輸入問題")
+    if len(question) > 500:
+        raise HTTPException(400, "問題過長，請精簡至 500 字內")
+    with conn_ctx() as conn:
+        row = conn.execute(
+            "SELECT company, content FROM reports WHERE id = ?", (rid,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "not found")
+        title = row["company"] or ""
+        content = (row["content"] or "")[:12000]
+        if len(content.strip()) < 20:
+            raise HTTPException(400, "報告內容太短，無法問答")
+        prompt = _ASK_PROMPT % {
+            "title": title, "content": content, "question": question
+        }
+        answer = (_call_gemini(prompt, json_mode=False) or "").strip()
+        if not answer:
+            raise HTTPException(502, "Gemini 未回傳答案")
+        return {"answer": answer}
+
+
+@app.post("/reports/{rid}/generate-cld")
+def generate_report_cld(rid: int):
+    with conn_ctx() as conn:
+        row = conn.execute(
+            "SELECT company, content FROM reports WHERE id = ?", (rid,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "not found")
+        title = row["company"] or ""
+        content = (row["content"] or "")[:12000]
+        if len(content.strip()) < 30:
+            raise HTTPException(400, "報告內容太短，無法生成因果圖")
+        prompt = _CLD_PROMPT % {"title": title, "content": content}
+        cld = _call_gemini(prompt)
+        if not isinstance(cld, dict) or "nodes" not in cld or "edges" not in cld:
+            raise HTTPException(502, "Gemini 回傳的因果圖結構不完整")
+        cld.setdefault("loops", [])
+        cld_json = json_lib.dumps(cld, ensure_ascii=False)
+        conn.execute("UPDATE reports SET cld = ? WHERE id = ?", (cld_json, rid))
+        return cld
 
 
 # ---------- PDFs CRUD ----------
