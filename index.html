@@ -469,7 +469,9 @@ body.dark #main { background: var(--bg-light); }
   pointer-events: none; }
 .btn-icon .btn-badge { pointer-events: none; }
 .btn-icon.btn-star svg { fill: none; }
-.btn-icon.btn-star.starred svg { fill: var(--accent); stroke: var(--accent); }
+.btn-icon.btn-star.starred svg { fill: #e8a020; stroke: #e8a020; }
+.btn-icon.btn-love svg { fill: none; }
+.btn-icon.btn-love.loved svg { fill: #e0245e; stroke: #e0245e; }
 .btn-icon:hover { border-color: var(--accent); color: var(--accent-dim); }
 .btn-icon.btn-delete:hover { border-color: var(--danger); color: var(--danger); }
 .btn-icon .btn-badge {
@@ -2326,6 +2328,7 @@ body.dark .filter-chip.on { color: #16140f; }
 .btn-star:hover { border-color: #e8a020; color: #e8a020; }
 .btn-duplicate:hover { border-color: var(--accent); color: var(--accent-dim); }
 .li-star { color: #e8a020; }
+.li-love { color: #e0245e; }
 
 /* ── Word count ─────────────────────────────────────────────── */
 .word-count-bar {
@@ -2579,6 +2582,7 @@ input:-webkit-autofill:focus {
     </div>
     <div class="filter-bar" id="article-filter-bar">
       <button class="filter-chip" data-f="star" onclick="toggleFilter('star')">收藏</button>
+      <button class="filter-chip" data-f="loved" onclick="toggleFilter('loved')">喜歡</button>
       <button class="filter-chip" data-f="notes" onclick="toggleFilter('notes')">有筆記</button>
       <button class="filter-chip" data-f="cld" onclick="toggleFilter('cld')">因果圖</button>
       <input type="date" class="filter-date" id="filter-from" onchange="renderList()" title="起始日期（含）">
@@ -2620,6 +2624,7 @@ input:-webkit-autofill:focus {
     </div>
     <div class="filter-bar" id="report-filter-bar">
       <button class="filter-chip" data-rf="star" onclick="toggleReportFilter('star')">收藏</button>
+      <button class="filter-chip" data-rf="loved" onclick="toggleReportFilter('loved')">喜歡</button>
       <button class="filter-chip" data-rf="notes" onclick="toggleReportFilter('notes')">有筆記</button>
       <button class="filter-chip" data-rf="cld" onclick="toggleReportFilter('cld')">因果圖</button>
       <input type="date" class="filter-date" id="report-filter-from" onchange="renderReportList()" title="起始日期（含）">
@@ -2696,6 +2701,7 @@ input:-webkit-autofill:focus {
         <button class="btn-icon btn-edit" onclick="showForm(currentId)" title="編輯"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
         <button class="btn-icon btn-delete" onclick="deleteArticle(currentId)" title="刪除"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button>
         <button class="btn-icon btn-star" id="btn-star" onclick="toggleStar(currentId)" title="收藏"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button class="btn-icon btn-love" id="btn-love" onclick="toggleLove(currentId)" title="喜歡"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
         <button class="btn-icon btn-duplicate" onclick="duplicateArticle(currentId)" title="複製"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         <button class="btn-icon btn-edit" id="btn-highlight" onclick="toggleHighlighter()" title="螢光筆"><svg viewBox="0 0 24 24"><path d="M6 17l3-3 7-7 3 3-7 7-3 3z"/><path d="M14 7l3 3"/><line x1="3" y1="21" x2="21" y2="21"/></svg></button>
         <button class="btn-icon btn-edit" id="btn-notes" onclick="toggleNotes()" title="筆記"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg><span id="notes-badge" class="btn-badge"></span></button>
@@ -2818,6 +2824,7 @@ input:-webkit-autofill:focus {
         <button class="btn-icon btn-edit" onclick="showReportForm(currentReportId)" title="編輯"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
         <button class="btn-icon btn-delete" onclick="deleteReport(currentReportId)" title="刪除"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button>
         <button class="btn-icon btn-star" id="btn-rstar" onclick="toggleReportStar(currentReportId)" title="收藏"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+        <button class="btn-icon btn-love" id="btn-rlove" onclick="toggleReportLove(currentReportId)" title="喜歡"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
         <button class="btn-icon btn-watch" id="btn-rwatch" onclick="toggleWatch(currentReportId)" title="加入觀察清單（追蹤此公司評等）"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         <button class="btn-icon btn-duplicate" onclick="duplicateReport(currentReportId)" title="複製"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         <button class="btn-icon btn-edit" id="btn-rhighlight" onclick="toggleHighlighter()" title="螢光筆"><svg viewBox="0 0 24 24"><path d="M6 17l3-3 7-7 3 3-7 7-3 3z"/><path d="M14 7l3 3"/><line x1="3" y1="21" x2="21" y2="21"/></svg></button>
@@ -3155,6 +3162,7 @@ function _apiToArticle(r) {
     images: _parseImages(r.images), image: '',
     tags: r.tags || [],
     starred: r.starred || 0,
+    loved: r.loved || 0,
     summary: r.summary || '',
     cld: r.cld || '',
     notes: r.notes || '[]',
@@ -3171,6 +3179,7 @@ function _apiToReport(r) {
     notes: r.notes || '[]',
     highlights: r.highlights || '[]',
     starred: r.starred || 0,
+    loved: r.loved || 0,
     summary: r.summary || '',
     cld: r.cld || '',
   };
@@ -3583,7 +3592,7 @@ function applyTagFilter(tag) {
 }
 
 // ── 進階篩選 ──────────────────────────────────────────────────
-let _filters = { star: false, notes: false, cld: false };
+let _filters = { star: false, loved: false, notes: false, cld: false };
 function toggleFilter(key) {
   _filters[key] = !_filters[key];
   const btn = document.querySelector(`.filter-chip[data-f="${key}"]`);
@@ -3592,7 +3601,7 @@ function toggleFilter(key) {
   renderList();
 }
 function clearFilters() {
-  _filters = { star: false, notes: false, cld: false };
+  _filters = { star: false, loved: false, notes: false, cld: false };
   document.querySelectorAll('#article-filter-bar .filter-chip').forEach(b => b.classList.remove('on'));
   const f = document.getElementById('filter-from'), t = document.getElementById('filter-to');
   if (f) f.value = ''; if (t) t.value = '';
@@ -3602,7 +3611,7 @@ function clearFilters() {
 function _refreshFilterClear() {
   const from = document.getElementById('filter-from')?.value || '';
   const to   = document.getElementById('filter-to')?.value || '';
-  const any  = _filters.star || _filters.notes || _filters.cld || from || to;
+  const any  = _filters.star || _filters.loved || _filters.notes || _filters.cld || from || to;
   document.getElementById('filter-clear')?.classList.toggle('show', !!any);
 }
 function _jsonHasItems(s) {
@@ -3644,6 +3653,7 @@ function renderList() {
     const matchTag = !currentTag || (a.tags||[]).includes(currentTag);
     // 進階篩選
     if (_filters.star && !a.starred) return false;
+    if (_filters.loved && !a.loved) return false;
     if (_filters.notes && !(_jsonHasItems(a.notes) || _jsonHasItems(a.highlights))) return false;
     if (_filters.cld && !_hasCld(a)) return false;
     if (dFrom && (!a.date || a.date < dFrom)) return false;
@@ -3661,7 +3671,7 @@ function renderList() {
 
   if (!filtered.length) {
     const hasCriteria = q || currentFolder || currentTag || dFrom || dTo
-      || _filters.star || _filters.notes || _filters.cld;
+      || _filters.star || _filters.loved || _filters.notes || _filters.cld;
     list.innerHTML = `<div class="empty-list">${hasCriteria ? '沒有符合的文章' : '尚無文章<br>按上方按鈕新增'}</div>`;
     return;
   }
@@ -3671,7 +3681,7 @@ function renderList() {
       ${_batchMode ? `<input type="checkbox" class="batch-cb" data-id="${a.id}" ${_batchSel.has(a.id)?'checked':''} onclick="event.stopPropagation();toggleBatchSel(${a.id})" style="margin-right:7px;flex-shrink:0;accent-color:var(--accent)">` : ''}
       <div style="flex:1;min-width:0">
         <div class="li-title">
-          ${a.starred ? '<span class="li-star">★</span> ' : ''}${esc(a.title)}
+          ${a.starred ? '<span class="li-star">★</span> ' : ''}${a.loved ? '<span class="li-love">♥</span> ' : ''}${esc(a.title)}
         </div>
         <div class="li-meta">
           ${a.folder ? `<span class="folder-tag">${esc(a.folder)}</span>` : ''}
@@ -3706,6 +3716,8 @@ function viewArticle(id) {
 
   const btn = document.getElementById('btn-star');
   if (btn) btn.classList.toggle('starred', !!a.starred);
+  const lbtn = document.getElementById('btn-love');
+  if (lbtn) lbtn.classList.toggle('loved', !!a.loved);
 
   const chars = (a.content || '').replace(/\s/g, '').length;
   const wcEl  = document.getElementById('word-count-bar');
@@ -4164,7 +4176,7 @@ function ratingClass(r) {
 }
 
 // ── 報告進階篩選 ──────────────────────────────────────────────
-let _rFilters = { star: false, notes: false, cld: false };
+let _rFilters = { star: false, loved: false, notes: false, cld: false };
 function toggleReportFilter(key) {
   _rFilters[key] = !_rFilters[key];
   const btn = document.querySelector(`.filter-chip[data-rf="${key}"]`);
@@ -4173,7 +4185,7 @@ function toggleReportFilter(key) {
   renderReportList();
 }
 function clearReportFilters() {
-  _rFilters = { star: false, notes: false, cld: false };
+  _rFilters = { star: false, loved: false, notes: false, cld: false };
   document.querySelectorAll('#report-filter-bar .filter-chip').forEach(b => b.classList.remove('on'));
   const f = document.getElementById('report-filter-from'), t = document.getElementById('report-filter-to');
   if (f) f.value = ''; if (t) t.value = '';
@@ -4183,7 +4195,7 @@ function clearReportFilters() {
 function _refreshReportFilterClear() {
   const from = document.getElementById('report-filter-from')?.value || '';
   const to   = document.getElementById('report-filter-to')?.value || '';
-  const any  = _rFilters.star || _rFilters.notes || _rFilters.cld || from || to;
+  const any  = _rFilters.star || _rFilters.loved || _rFilters.notes || _rFilters.cld || from || to;
   document.getElementById('report-filter-clear')?.classList.toggle('show', !!any);
 }
 
@@ -4207,6 +4219,7 @@ function renderReportList() {
       (r.content||'').toLowerCase().includes(q);
     const matchSector = !currentSector || r.sector === currentSector;
     if (_rFilters.star && !r.starred) return false;
+    if (_rFilters.loved && !r.loved) return false;
     if (_rFilters.notes && !(_jsonHasItems(r.notes) || _jsonHasItems(r.highlights))) return false;
     if (_rFilters.cld && !_hasCld(r)) return false;
     if (dFrom && (!r.date || r.date < dFrom)) return false;
@@ -4224,7 +4237,7 @@ function renderReportList() {
   _refreshWatchOpenCount();
   chip.textContent = filtered.length;
   if (!filtered.length) {
-    const hasCriteria = q || currentSector || dFrom || dTo || _rFilters.star || _rFilters.notes || _rFilters.cld;
+    const hasCriteria = q || currentSector || dFrom || dTo || _rFilters.star || _rFilters.loved || _rFilters.notes || _rFilters.cld;
     list.innerHTML = `<div class="empty-list">${hasCriteria ? '沒有符合的報告' : '尚無報告<br>按上方按鈕新增'}</div>`;
     return;
   }
@@ -4232,7 +4245,7 @@ function renderReportList() {
   const wlSet = new Set(getWatchlist());
   list.innerHTML = toRender.map(r => `
     <div class="report-list-item ${r.id === currentReportId ? 'active' : ''}" onclick="viewReport(${r.id})">
-      <div class="rli-company">${esc(r.company)}${r.ticker ? ` <span style="font-size:10px;color:var(--sidebar-muted)">${esc(r.ticker)}</span>` : ''}${wlSet.has(_reportKey(r)) ? ` <span class="rli-watch" title="在觀察清單中">觀察中</span>` : ''}</div>
+      <div class="rli-company">${r.loved ? '<span class="li-love">♥</span> ' : ''}${esc(r.company)}${r.ticker ? ` <span style="font-size:10px;color:var(--sidebar-muted)">${esc(r.ticker)}</span>` : ''}${wlSet.has(_reportKey(r)) ? ` <span class="rli-watch" title="在觀察清單中">觀察中</span>` : ''}</div>
       <div class="rli-meta">
         ${r.sector ? `<span class="sector-tag">${esc(r.sector)}</span>` : ''}
         ${r.rating ? `<span class="rating-badge ${ratingClass(r.rating)}" style="font-size:9px;padding:1px 5px">${esc(r.rating)}</span>` : ''}
@@ -4267,6 +4280,8 @@ function viewReport(id) {
   // 收藏按鈕狀態
   const sbtn = document.getElementById('btn-rstar');
   if (sbtn) sbtn.classList.toggle('starred', !!r.starred);
+  const lbtn = document.getElementById('btn-rlove');
+  if (lbtn) lbtn.classList.toggle('loved', !!r.loved);
   _refreshWatchBtn();
 
   // 字數 / 閱讀時間
@@ -4678,7 +4693,18 @@ async function toggleStar(id) {
   await _apiPatch(`/articles/${id}`, { starred: newVal });
   a.starred = newVal;
   const btn = document.getElementById('btn-star');
-  if (btn) { btn.classList.toggle('starred', !!newVal); btn.textContent = newVal ? '★ 已收藏' : '☆ 收藏'; }
+  if (btn) btn.classList.toggle('starred', !!newVal);
+  renderList();
+}
+
+async function toggleLove(id) {
+  const a = articles.find(x => x.id === id);
+  if (!a) return;
+  const newVal = a.loved ? 0 : 1;
+  await _apiPatch(`/articles/${id}`, { loved: newVal });
+  a.loved = newVal;
+  const btn = document.getElementById('btn-love');
+  if (btn) btn.classList.toggle('loved', !!newVal);
   renderList();
 }
 
@@ -5061,10 +5087,18 @@ async function toggleReportStar(id) {
   try { await _apiPatch(`/reports/${id}`, { starred: newVal }); } catch(e) {}
   r.starred = newVal;
   const btn = document.getElementById('btn-rstar');
-  if (btn) {
-    btn.classList.toggle('starred', !!newVal);
-    btn.textContent = newVal ? '★ 已收藏' : '☆ 收藏';
-  }
+  if (btn) btn.classList.toggle('starred', !!newVal);
+  renderReportList();
+}
+
+async function toggleReportLove(id) {
+  const r = reports.find(x => x.id === id);
+  if (!r) return;
+  const newVal = r.loved ? 0 : 1;
+  try { await _apiPatch(`/reports/${id}`, { loved: newVal }); } catch(e) {}
+  r.loved = newVal;
+  const btn = document.getElementById('btn-rlove');
+  if (btn) btn.classList.toggle('loved', !!newVal);
   renderReportList();
 }
 

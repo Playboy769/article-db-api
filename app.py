@@ -52,6 +52,8 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE reports ADD COLUMN notes TEXT DEFAULT '[]'",
             "ALTER TABLE reports ADD COLUMN summary TEXT",
             "ALTER TABLE reports ADD COLUMN cld TEXT DEFAULT ''",
+            "ALTER TABLE articles ADD COLUMN loved INTEGER DEFAULT 0",
+            "ALTER TABLE reports ADD COLUMN loved INTEGER DEFAULT 0",
             # PDF library
             """CREATE TABLE IF NOT EXISTS pdfs (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,6 +151,7 @@ class ArticleUpdate(BaseModel):
     date: Optional[str] = None
     images: Optional[str] = None
     starred: Optional[int] = None
+    loved: Optional[int] = None
     highlights: Optional[str] = None
     notes: Optional[str] = None
     cld: Optional[str] = None
@@ -191,6 +194,7 @@ class ReportUpdate(BaseModel):
     content: Optional[str] = None
     images: Optional[str] = None
     starred: Optional[int] = None
+    loved: Optional[int] = None
     highlights: Optional[str] = None
     notes: Optional[str] = None
     summary: Optional[str] = None
@@ -388,7 +392,7 @@ def update_article(aid: int, u: ArticleUpdate):
         fields, values = [], []
         for k in ("title", "content", "author", "source", "language",
                   "category_id", "summary", "date", "images", "starred",
-                  "highlights", "notes", "cld"):
+                  "loved", "highlights", "notes", "cld"):
             v = getattr(u, k)
             if v is not None:
                 fields.append(f"{k} = ?")
@@ -731,7 +735,7 @@ def update_report(rid: int, u: ReportUpdate):
         fields, values = [], []
         for k in ("company", "ticker", "sector", "rating", "target",
                   "date", "analyst", "source", "content", "images",
-                  "starred", "highlights", "notes", "summary", "cld"):
+                  "starred", "loved", "highlights", "notes", "summary", "cld"):
             v = getattr(u, k)
             if v is not None:
                 fields.append(f"{k} = ?")
