@@ -4547,6 +4547,30 @@ document.getElementById('folder-modal-overlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeFolderModal();
 });
 
+// ── 搜尋欄開關 ───────────────────────────────────────────────
+function toggleSearchBar(inputId, btnId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const bar = input.closest('.sidebar-search');
+  if (!bar) return;
+  const open = bar.classList.toggle('open');
+  if (btnId) document.getElementById(btnId)?.classList.toggle('active', open);
+  if (open) {
+    setTimeout(() => input.focus(), 50);
+  } else {
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+  }
+}
+function _closeAllSearchBars() {
+  document.querySelectorAll('.sidebar-search.open').forEach(bar => {
+    bar.classList.remove('open');
+    const inp = bar.querySelector('input');
+    if (inp) { inp.value = ''; inp.dispatchEvent(new Event('input')); }
+  });
+  document.querySelectorAll('.btn-search-toggle.active').forEach(b => b.classList.remove('active'));
+}
+
 // ── Keyboard shortcuts ────────────────────────────────────────
 document.addEventListener('keydown', e => {
   // Folder modal 優先
@@ -4566,6 +4590,15 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (document.getElementById('article-form').style.display !== 'none') cancelForm();
     if (document.getElementById('report-form').style.display  !== 'none') cancelReportForm();
+    _closeAllSearchBars();
+  }
+  if (e.key === '/' && !e.target.matches('input,textarea,[contenteditable]')) {
+    e.preventDefault();
+    const mode = document.body.classList.contains('reports-mode') ? ['report-search-input','btn-search-reports']
+               : document.body.classList.contains('links-mode')   ? ['link-search-input','btn-search-links']
+               : document.body.classList.contains('pdfs-mode')    ? ['pdf-search-input','btn-search-pdfs']
+               : ['search-input','btn-search-articles'];
+    toggleSearchBar(...mode);
   }
   if ((e.metaKey || e.ctrlKey) && e.key === 's') {
     e.preventDefault();
