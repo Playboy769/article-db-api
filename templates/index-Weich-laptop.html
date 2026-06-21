@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>文章資料庫</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Microsoft JhengHei", sans-serif; max-width: 980px; margin: 24px auto; padding: 0 16px; color:#222; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 16px; margin-top: 28px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+  textarea, input, select { font-family: inherit; font-size: 14px; }
+  textarea { width: 100%; min-height: 140px; }
+  input[type=text], select { padding: 6px 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
+  .row > * { flex: 0 0 auto; }
+  .grow { flex: 1 1 200px; }
+  button { padding: 6px 12px; cursor: pointer; }
+  .card { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; margin: 8px 0; }
+  .meta { color: #666; font-size: 12px; }
+  .tag { display: inline-block; background:#eef; color:#225; border-radius: 3px; padding: 1px 6px; margin-right: 4px; font-size: 12px; }
+  pre { background: #f6f6f6; padding: 8px; border-radius: 4px; max-height: 200px; overflow: auto; font-size: 12px; }
+  .actions button { margin-right: 4px; font-size: 12px; }
+</style>
+</head>
+<body data-ai="{{ 'true' if enable_ai else 'false' }}" data-semantic="{{ 'true' if enable_semantic else 'false' }}">
+<h1>文章資料庫</h1>
+<div class="meta">
+  FastAPI + SQLite ·
+  全文 / 模糊{% if enable_semantic %} / 語意{% endif %} 搜尋 ·
+  {% if enable_ai %}AI 啟用中{% else %}AI 已停用（不消耗 API）{% endif %}
+</div>
+
+<h2>新增文章</h2>
+<div class="row">
+  <input id="t-title" type="text" class="grow" placeholder="標題">
+  <input id="t-author" type="text" placeholder="作者">
+  <input id="t-language" type="text" value="zh" style="width:60px">
+</div>
+<div class="row">
+  <input id="t-tags" type="text" class="grow" placeholder="標籤（逗號分隔，可留空）">
+  <input id="t-category" type="number" placeholder="分類 ID（可留空）">
+</div>
+<textarea id="t-content" placeholder="內文..."></textarea>
+<div class="row"><button onclick="createArticle()">建立</button></div>
+
+<h2>搜尋</h2>
+<div class="row">
+  <input id="q" type="text" class="grow" placeholder="搜尋字詞">
+  <select id="mode">
+    <option value="keyword">全文</option>
+    <option value="fuzzy">模糊</option>
+    {% if enable_semantic %}<option value="semantic">語意</option>{% endif %}
+  </select>
+  <button onclick="search()">搜尋</button>
+</div>
+
+<h2>進階篩選</h2>
+<div class="row">
+  <input id="f-author" type="text" placeholder="作者">
+  <input id="f-language" type="text" placeholder="語言 (zh/en)">
+  <input id="f-tag" type="text" placeholder="標籤">
+  <input id="f-min" type="number" placeholder="最少字數">
+  <input id="f-max" type="number" placeholder="最多字數">
+  <input id="f-from" type="date">
+  <input id="f-to" type="date">
+  <button onclick="filterList()">篩選</button>
+  <button onclick="filterList(true)">全部</button>
+</div>
+
+<h2>結果</h2>
+<div id="results"></div>
+
+<h2>分類</h2>
+<div class="row">
+  <input id="c-name" type="text" placeholder="分類名稱">
+  <input id="c-parent" type="number" placeholder="父分類 ID（可留空）">
+  <button onclick="addCategory()">新增分類</button>
+  <button onclick="loadCategories()">列出分類</button>
+</div>
+<pre id="categories"></pre>
+
+<script>
+const AI_ENABLED = document.body.dataset.ai === 'true';
+const SEMANTIC_ENABLED = document.body.dataset.semantic === 'true';
+const $ = (id) => document.getElementById(id);
+
+async function api(path, opts={}) {
+  const r = await fetch(path, {
+    headers: {'Content-Type': 'application/json'},
+    ...opts,
+  });
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+async function createArticle() {
+  const tags = $('t-tags').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const body = {
+    title: $('t-title').value,
+    content: $('t-content').value,
+    author: $('t-author').value || null,
+    language: $('t-language').value || 'zh',
+    category_id: $('t-category').value ? parseInt($('t-category').value) : null,
+    tags
+  };
+  if (!body.title || !body.content) { alert('需要標題與內容'); return; }
+  const a = await api('/articles', {method:'POST', body: JSON.stringify(body)});
+  alert(`已建立 #${a.id}`);
+  ['t-title','t-content','t-author','t-tags','t-category'].forEach(id => $(id).value = '');
+  filterList(true);
+}
+
+function render(items) {
+  $('results').innerHTML = items.map(a => `
+    <div class="card">
+      <div><b>#${a.id} ${escapeHTML(a.title)}</b>
+        ${a.similarity != null ? `<span class="meta">相似度 ${(a.similarity*100).toFixed(1)}%</span>` : ''}
+        ${a.sim != null ? `<span class="meta">模糊 ${(a.sim*100).toFixed(1)}%</span>` : ''}
+        ${a.rank != null ? `<span class="meta">rank ${a.rank.toFixed(3)}</span>` : ''}
+      </div>
+      <div class="meta">
+        ${a.author || '匿名'} · ${a.language || ''} · ${a.word_count || ''} 字 · ${a.created_at?.slice(0,10) || ''}
+      </div>
+      ${(a.tags||[]).map(t=>`<span class="tag">${escapeHTML(t)}</span>`).join('')}
+      ${a.summary ? `<div class="meta" style="margin-top:6px">${escapeHTML(a.summary)}</div>` : ''}
+      <div class="actions" style="margin-top:6px">
+        <button onclick="viewArticle(${a.id})">查看</button>
+        ${AI_ENABLED ? `<button onclick="summarize(${a.id})" title="會呼叫 Anthropic API">自動摘要</button>` : ''}
+        ${AI_ENABLED ? `<button onclick="autoTag(${a.id})" title="會呼叫 Anthropic API">自動標籤</button>` : ''}
+        ${AI_ENABLED ? `<button onclick="translate(${a.id})" title="會呼叫 Anthropic API">翻譯</button>` : ''}
+        ${SEMANTIC_ENABLED ? `<button onclick="related(${a.id})">相關文章</button>` : ''}
+        <button onclick="del(${a.id})">刪除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escapeHTML(s) {
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function search() {
+  const q = $('q').value.trim();
+  if (!q) return;
+  const mode = $('mode').value;
+  const items = await api(`/search/${mode}?q=${encodeURIComponent(q)}`);
+  render(items);
+}
+
+async function filterList(all=false) {
+  const params = new URLSearchParams();
+  if (!all) {
+    if ($('f-author').value) params.set('author', $('f-author').value);
+    if ($('f-language').value) params.set('language', $('f-language').value);
+    if ($('f-tag').value) params.set('tag', $('f-tag').value);
+    if ($('f-min').value) params.set('min_words', $('f-min').value);
+    if ($('f-max').value) params.set('max_words', $('f-max').value);
+    if ($('f-from').value) params.set('date_from', $('f-from').value);
+    if ($('f-to').value) params.set('date_to', $('f-to').value);
+  }
+  const items = await api('/articles?' + params.toString());
+  render(items);
+}
+
+async function viewArticle(id) {
+  const a = await api(`/articles/${id}`);
+  alert(`#${a.id} ${a.title}\n\n${a.content}`);
+}
+async function summarize(id) {
+  const r = await api(`/articles/${id}/summarize`, {method:'POST'});
+  alert('摘要：\n\n' + r.summary);
+  filterList(true);
+}
+async function autoTag(id) {
+  const r = await api(`/articles/${id}/auto-tag`, {method:'POST'});
+  alert('標籤：' + r.tags.join(', '));
+  filterList(true);
+}
+async function translate(id) {
+  const lang = prompt('翻譯為（例：en, ja, zh-Hant）', 'en');
+  if (!lang) return;
+  const r = await api(`/articles/${id}/translate?target_language=${encodeURIComponent(lang)}`, {method:'POST'});
+  alert(`${r.title}\n\n${r.content}\n\n(cached=${r.cached})`);
+}
+async function related(id) {
+  const items = await api(`/articles/${id}/related`);
+  render(items);
+}
+async function del(id) {
+  if (!confirm(`刪除 #${id}?`)) return;
+  await api(`/articles/${id}`, {method:'DELETE'});
+  filterList(true);
+}
+async function addCategory() {
+  const name = $('c-name').value.trim();
+  if (!name) return;
+  const parent = $('c-parent').value ? parseInt($('c-parent').value) : null;
+  await api('/categories', {method:'POST', body: JSON.stringify({name, parent_id: parent})});
+  $('c-name').value=''; $('c-parent').value='';
+  loadCategories();
+}
+async function loadCategories() {
+  const tree = await api('/categories');
+  $('categories').textContent = JSON.stringify(tree, null, 2);
+}
+
+filterList(true);
+</script>
+</body>
+</html>
