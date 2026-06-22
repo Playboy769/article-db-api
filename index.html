@@ -1636,6 +1636,10 @@ mark.hl[data-color="yellow"] { background: rgba(255,214,0,0.40); }
 mark.hl[data-color="green"]  { background: rgba(52,199,89,0.34); }
 mark.hl[data-color="pink"]   { background: rgba(255,65,130,0.28); }
 mark.hl[data-color="blue"]   { background: rgba(50,150,255,0.32); }
+mark.hl[data-color="orange"] { background: rgba(255,149,0,0.35); }
+mark.hl[data-color="purple"] { background: rgba(175,82,222,0.30); }
+mark.hl[data-color="red"]    { background: rgba(255,59,48,0.28); }
+mark.hl[data-color="teal"]   { background: rgba(0,199,190,0.32); }
 /* ── Dark mode：漸層 + 底部螢光積壓線 + 輕微 glow，黑底也清晰 ── */
 body.dark mark.hl {
   padding: 2px 3px;
@@ -1662,6 +1666,26 @@ body.dark mark.hl[data-color="blue"] {
   background: linear-gradient(180deg, rgba(110,190,255,0.36) 0%, rgba(60,160,255,0.50) 100%);
   box-shadow: inset 0 -2px 0 rgba(80,170,255,0.95), 0 0 6px rgba(80,170,255,0.22);
   color: #dbecff;
+}
+body.dark mark.hl[data-color="orange"] {
+  background: linear-gradient(180deg, rgba(255,180,60,0.40) 0%, rgba(255,149,0,0.55) 100%);
+  box-shadow: inset 0 -2px 0 rgba(255,159,20,0.95), 0 0 6px rgba(255,159,20,0.25);
+  color: #fff3d0;
+}
+body.dark mark.hl[data-color="purple"] {
+  background: linear-gradient(180deg, rgba(200,120,255,0.36) 0%, rgba(175,82,222,0.50) 100%);
+  box-shadow: inset 0 -2px 0 rgba(185,95,232,0.95), 0 0 6px rgba(185,95,232,0.22);
+  color: #f0deff;
+}
+body.dark mark.hl[data-color="red"] {
+  background: linear-gradient(180deg, rgba(255,100,80,0.36) 0%, rgba(255,59,48,0.50) 100%);
+  box-shadow: inset 0 -2px 0 rgba(255,70,60,0.95), 0 0 6px rgba(255,70,60,0.22);
+  color: #ffe4e2;
+}
+body.dark mark.hl[data-color="teal"] {
+  background: linear-gradient(180deg, rgba(60,220,210,0.36) 0%, rgba(0,199,190,0.50) 100%);
+  box-shadow: inset 0 -2px 0 rgba(0,210,200,0.95), 0 0 6px rgba(0,210,200,0.22);
+  color: #d0f7f5;
 }
 body.dark mark.hl:hover { filter: brightness(1.18); }
 /* active highlighter mode cursor */
@@ -2018,8 +2042,25 @@ body.reading-fullscreen #main { margin-left: 0 !important; }
   align-items: center; justify-content: center; }
 #stats-panel.open { display: flex; }
 .stats-inner { background: var(--bg-darker); border-radius: 16px; padding: 28px 32px;
-  width: 500px; max-width: 90vw; max-height: 85vh; overflow-y: auto; position: relative; }
+  width: 680px; max-width: 94vw; max-height: 88vh; overflow-y: auto; position: relative; }
 body.dark .stats-inner { background: #1a1a1a; }
+/* Stats cards */
+.sc-section-lbl { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.sc-grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+.sc-card { background: var(--bg-light); border-radius: 10px; padding: 14px 16px; border: 1px solid var(--border); }
+body.dark .sc-card { background: #222; border-color: #2a2a2a; }
+.sc-num { font-size: 26px; font-weight: 700; color: var(--accent); line-height: 1; }
+.sc-label { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+.sc-sub { font-size: 10px; color: var(--text-faint); margin-top: 2px; line-height: 1.5; }
+.sc-pct-bar { height: 3px; background: var(--border); border-radius: 2px; margin: 7px 0 3px; overflow: hidden; }
+.sc-pct-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.sc-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+.sc-bar-label { font-size: 12px; color: var(--text-main); width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+.sc-bar-track { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.sc-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+.sc-bar-count { font-size: 11px; color: var(--text-muted); flex-shrink: 0; min-width: 24px; text-align: right; }
+.sc-bar-pct { font-size: 10px; color: var(--text-faint); flex-shrink: 0; min-width: 34px; text-align: right; }
+.sc-divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 
 /* ── 因果循環圖 (CLD) ─────────────────────────────────────────── */
 #cld-panel { position: fixed; top:0; left:0; right:0; bottom:0;
@@ -4722,6 +4763,11 @@ const ACCENTS = {
   green:  { c: '#6aa85a', d: '#4f8442', label: '綠' },
   purple: { c: '#9170cc', d: '#6f50a6', label: '紫' },
   rose:   { c: '#cc6f8e', d: '#a8516e', label: '玫' },
+  orange: { c: '#d47830', d: '#a85818', label: '橙' },
+  red:    { c: '#c85050', d: '#9f3535', label: '紅' },
+  coral:  { c: '#c87060', d: '#a05040', label: '珊' },
+  indigo: { c: '#6070c8', d: '#4454a0', label: '靛' },
+  slate:  { c: '#7090a8', d: '#506880', label: '灰' },
 };
 let accentName = localStorage.getItem('accent') || 'gold';
 function setAccent(name) {
@@ -6906,48 +6952,89 @@ async function batchAddTag() {
 
 // ── 8. Stats panel ────────────────────────────────────────────
 async function openStats() {
-  const total      = articles.length;
-  const totalChars = articles.reduce((s, a) => s + (a.content || '').replace(/\s/g, '').length, 0);
-  const folderCounts = {};
-  articles.forEach(a => { const f = a.folder || '未分類'; folderCounts[f] = (folderCounts[f] || 0) + 1; });
-  const tagCounts = {};
-  articles.forEach(a => (a.tags || []).forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
-  const topTags    = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
-  const topFolders = Object.entries(folderCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const total = articles.length;
+
+  // Content metrics
+  const wordCounts = articles.map(a => {
+    const txt = (a.content || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    return txt ? txt.split(' ').length : 0;
+  });
+  const totalWords = wordCounts.reduce((s, n) => s + n, 0);
+  const avgWords   = total ? Math.round(totalWords / total) : 0;
+  const maxWords   = wordCounts.length ? Math.max(...wordCounts) : 0;
+  const longestIdx = wordCounts.indexOf(maxWords);
+  const longestTitle = longestIdx >= 0 ? (articles[longestIdx]?.title || '') : '';
+  const avgReadMin = Math.max(1, Math.round(avgWords / 250));
+
+  // Quality metrics
+  const starredCount  = articles.filter(a => a.starred).length;
+  const lovedCount    = articles.filter(a => a.loved).length;
+  const summaryCount  = articles.filter(a => (a.summary || '').trim()).length;
+  const cldCount      = articles.filter(a => (a.cld || '').trim()).length;
+
+  // Folder distribution
+  const folderMap = {};
+  articles.forEach(a => { const f = a.folder || '未分類'; folderMap[f] = (folderMap[f] || 0) + 1; });
+  const topFolders = Object.entries(folderMap).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const maxFolderN = topFolders.length ? topFolders[0][1] : 0;
+
+  // Helpers
+  const fmtN = n => n >= 10000 ? Math.round(n / 1000) + 'K' : n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
+  const pctOf = (c, t) => t ? Math.round(c / t * 100) + '%' : '0%';
+
+  const metaCard = (val, label, sub = '') => `
+    <div class="sc-card">
+      <div class="sc-num">${val}</div>
+      <div class="sc-label">${label}</div>
+      ${sub ? `<div class="sc-sub">${sub}</div>` : ''}
+    </div>`;
+
+  const qualCard = (val, label, t) => `
+    <div class="sc-card">
+      <div class="sc-num">${val}</div>
+      <div class="sc-label">${label}</div>
+      <div class="sc-pct-bar"><div class="sc-pct-fill" style="width:${t ? Math.round(val/t*100) : 0}%"></div></div>
+      <div class="sc-sub">${pctOf(val, t)} 的文章</div>
+    </div>`;
+
+  const barRow = (label, c, max, t) => `
+    <div class="sc-bar-row">
+      <div class="sc-bar-label" title="${esc(label)}">${esc(label)}</div>
+      <div class="sc-bar-track"><div class="sc-bar-fill" style="width:${max ? Math.round(c/max*100) : 0}%"></div></div>
+      <div class="sc-bar-count">${c}</div>
+      <div class="sc-bar-pct">${pctOf(c, t)}</div>
+    </div>`;
+
   document.getElementById('stats-content').innerHTML = `
-    <div id="stats-overview" style="margin-bottom:20px">
-      <div style="font-size:12px;color:var(--text-faint);padding:2px 0">載入跨資料庫統計…</div>
+    <div id="stats-overview" style="margin-bottom:24px">
+      <div class="sc-section-lbl" style="color:var(--text-faint)">載入跨資料庫統計…</div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
-      <div style="background:var(--bg-light);border-radius:10px;padding:14px 16px">
-        <div style="font-size:32px;font-weight:700;color:var(--accent)">${total}</div>
-        <div style="font-size:12px;color:var(--text-muted)">本機文章</div>
-      </div>
-      <div style="background:var(--bg-light);border-radius:10px;padding:14px 16px">
-        <div style="font-size:32px;font-weight:700;color:var(--accent)">${totalChars >= 1000 ? Math.round(totalChars/1000) + 'K' : totalChars}</div>
-        <div style="font-size:12px;color:var(--text-muted)">總字數</div>
-      </div>
+
+    <div class="sc-section-lbl">文章內容</div>
+    <div class="sc-grid4" style="margin-bottom:24px">
+      ${metaCard(fmtN(totalWords), '總字數', '去除空白後')}
+      ${metaCard(fmtN(avgWords), '平均字數', '字 / 篇')}
+      ${metaCard(avgReadMin + ' 分', '平均閱讀', '250 字 / 分')}
+      ${metaCard(fmtN(maxWords), '最長文章', esc(longestTitle.slice(0, 18) + (longestTitle.length > 18 ? '…' : '')))}
     </div>
-    ${topFolders.length ? `<div style="margin-bottom:16px">
-      <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-muted)">資料夾分布</div>
-      ${topFolders.map(([f, c]) => `
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-          <div style="font-size:12px;color:var(--text-main);width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="${esc(f)}">${esc(f)}</div>
-          <div style="flex:1;height:6px;background:var(--border);border-radius:3px">
-            <div style="width:${Math.round(c/total*100)}%;height:100%;background:var(--accent);border-radius:3px"></div>
-          </div>
-          <div style="font-size:11px;color:var(--text-muted);flex-shrink:0">${c}</div>
-        </div>`).join('')}
-    </div>` : ''}
-    ${topTags.length ? `<div>
-      <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-muted)">標籤雲</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${topTags.map(([t, c]) => `<span style="background:rgba(0,0,0,${Math.min(.75, c/topTags[0][1]*.55+.2).toFixed(2)});color:var(--text-main);border-radius:20px;padding:3px 10px;font-size:${Math.min(14, 10+c)}px;cursor:pointer" onclick="closeStats();filterByTag('${escAttr(t)}')" title="${c} 篇文章">${esc(t)}<span style="font-size:9px;opacity:.65;margin-left:4px">${c}</span></span>`).join('')}
-      </div>
-    </div>` : ''}`;
+
+    <div class="sc-section-lbl">文章品質</div>
+    <div class="sc-grid4" style="margin-bottom:24px">
+      ${qualCard(starredCount, '★ 收藏', total)}
+      ${qualCard(lovedCount,   '♥ 喜愛', total)}
+      ${qualCard(summaryCount, 'AI 摘要', total)}
+      ${qualCard(cldCount,     '因果圖', total)}
+    </div>
+
+    ${topFolders.length ? `
+    <div class="sc-section-lbl">資料夾分布</div>
+    <div>${topFolders.map(([f, c]) => barRow(f, c, maxFolderN, total)).join('')}</div>
+    ` : ''}`;
+
   document.getElementById('stats-panel').classList.add('open');
   _loadStatsOverview();
 }
+
 // 串接後端 /stats，補上跨資料庫數字與報告產業分布
 async function _loadStatsOverview() {
   const box = document.getElementById('stats-overview');
@@ -6957,33 +7044,38 @@ async function _loadStatsOverview() {
     s = await fetch(`${API_BASE}/stats`).then(r => r.json());
   } catch (e) { box.style.display = 'none'; return; }
   if (!s || !s.articles) { box.style.display = 'none'; return; }
-  const card = (num, label, sub) => `
-    <div style="background:var(--bg-light);border-radius:10px;padding:12px 14px">
-      <div style="font-size:26px;font-weight:700;color:var(--accent);line-height:1.1">${num}</div>
-      <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">${label}</div>
-      ${sub ? `<div style="font-size:10px;color:var(--text-faint);margin-top:3px;line-height:1.4">${sub}</div>` : ''}
+
+  const fmtPct = (c, t) => t ? Math.round(c / t * 100) + '%' : '0%';
+  const dbCard = (val, label, lines = []) => `
+    <div class="sc-card">
+      <div class="sc-num">${val}</div>
+      <div class="sc-label">${label}</div>
+      ${lines.map(l => `<div class="sc-sub">${l}</div>`).join('')}
     </div>`;
-  const sectors = (s.sectors || []).filter(x => x.count > 0).slice(0, 8);
+
+  const sectors  = (s.sectors || []).filter(x => x.count > 0).slice(0, 8);
   const sectorMax = sectors.length ? sectors[0].count : 0;
+  const rTotal   = s.reports?.total || 0;
+
   box.innerHTML = `
-    <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-muted)">資料庫總覽</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
-      ${card(s.articles.total, '文章', `本月 +${s.articles.this_month}<br>星號 ${s.articles.starred}・因果圖 ${s.articles.with_cld}`)}
-      ${card(s.reports.total, '報告', `本月 +${s.reports.this_month}<br>星號 ${s.reports.starred}`)}
-      ${card(s.pdfs.total, 'PDF', `標籤 ${s.tags.total} 個`)}
-      ${card(s.links.total, '連結', '')}
+    <div class="sc-section-lbl">資料庫總覽</div>
+    <div class="sc-grid4" style="margin-bottom:${sectors.length ? 24 : 4}px">
+      ${dbCard(s.articles.total, '文章', [`本月 +${s.articles.this_month}`, `收藏 ${s.articles.starred}・因果圖 ${s.articles.with_cld}`])}
+      ${dbCard(s.reports.total,  '研究報告', [`本月 +${s.reports.this_month}`, `收藏 ${s.reports.starred}`])}
+      ${dbCard(s.pdfs.total,     'PDF', ['已入庫'])}
+      ${dbCard(s.links.total,    '連結', ['收藏中'])}
     </div>
-    ${sectors.length ? `<div style="margin-bottom:4px">
-      <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-muted)">報告產業分布</div>
-      ${sectors.map(x => `
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-          <div style="font-size:12px;color:var(--text-main);width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="${esc(x.sector)}">${esc(x.sector)}</div>
-          <div style="flex:1;height:6px;background:var(--border);border-radius:3px">
-            <div style="width:${sectorMax ? Math.round(x.count / sectorMax * 100) : 0}%;height:100%;background:var(--accent);border-radius:3px"></div>
-          </div>
-          <div style="font-size:11px;color:var(--text-muted);flex-shrink:0">${x.count}</div>
-        </div>`).join('')}
-    </div>` : ''}`;
+    ${sectors.length ? `
+    <div class="sc-section-lbl">報告產業分布</div>
+    <div>${sectors.map(x => `
+      <div class="sc-bar-row">
+        <div class="sc-bar-label" title="${esc(x.sector)}">${esc(x.sector)}</div>
+        <div class="sc-bar-track"><div class="sc-bar-fill" style="width:${sectorMax ? Math.round(x.count/sectorMax*100) : 0}%"></div></div>
+        <div class="sc-bar-count">${x.count}</div>
+        <div class="sc-bar-pct">${fmtPct(x.count, rTotal)}</div>
+      </div>`).join('')}
+    </div>
+    <hr class="sc-divider">` : ''}`;
 }
 function closeStats() {
   document.getElementById('stats-panel').classList.remove('open');
@@ -7867,6 +7959,10 @@ function _learnGameDone(mode) {
   <button class="hl-color-btn" style="background:#34C759" title="綠色" onclick="hlApply('green')"></button>
   <button class="hl-color-btn" style="background:#FF4182" title="粉色" onclick="hlApply('pink')"></button>
   <button class="hl-color-btn" style="background:#3296FF" title="藍色" onclick="hlApply('blue')"></button>
+  <button class="hl-color-btn" style="background:#FF9500" title="橙色" onclick="hlApply('orange')"></button>
+  <button class="hl-color-btn" style="background:#AF52DE" title="紫色" onclick="hlApply('purple')"></button>
+  <button class="hl-color-btn" style="background:#FF3B30" title="紅色" onclick="hlApply('red')"></button>
+  <button class="hl-color-btn" style="background:#00C7BE" title="青色" onclick="hlApply('teal')"></button>
   <div class="hl-sep"></div>
   <button class="hl-erase-btn" onclick="startAnchorNote()" style="white-space:nowrap">筆記</button>
   <div class="hl-sep"></div>
@@ -7896,7 +7992,7 @@ function _learnGameDone(mode) {
 <div id="stats-panel">
   <div class="stats-inner">
     <button onclick="closeStats()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);line-height:1">×</button>
-    <h2 style="margin:0 0 20px;font-size:16px;font-weight:700">📊 統計總覽</h2>
+    <h2 style="margin:0 0 20px;font-size:16px;font-weight:700;letter-spacing:.02em">統計總覽</h2>
     <div id="stats-content"></div>
   </div>
 </div>
