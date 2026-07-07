@@ -3421,6 +3421,15 @@ function esc(s) {
     .replace(/"/g,'&quot;');
 }
 
+// 用於嵌入 onclick="fn('...')" 這種單引號 JS 字串內的屬性值：
+// 先跳脫反斜線／單引號讓 JS 字串合法，再做 HTML 屬性跳脫
+function escAttr(s) {
+  return String(s)
+    .replace(/\\/g,'\\\\').replace(/'/g,"\\'")
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
 let toastTimer;
 function toast(msg) {
   const el = document.getElementById('toast');
