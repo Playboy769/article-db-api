@@ -101,11 +101,11 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 body.v-resizing { cursor: ns-resize !important; user-select: none; }
 body.v-resizing * { cursor: ns-resize !important; user-select: none !important; }
 .sidebar-brand {
-  padding: 24px 20px 16px;
+  padding: 20px 20px 16px;
   border-bottom: 1px solid var(--border-dark);
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
 }
 .brand-title {
   font-family: 'Cormorant Garamond', 'Georgia', serif;
@@ -408,9 +408,11 @@ body.dark #main { background: var(--bg-light); }
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 24px;
 }
+.article-toolbar .btn-icon, .article-toolbar .btn-text { flex-shrink: 0; }
 .article-scroll-body {
   flex: 1;
   overflow-y: auto;
@@ -472,18 +474,20 @@ body.dark #main { background: var(--bg-light); }
 .btn-icon .btn-badge:empty { display: none; }
 /* 蓋掉後面 .btn-edit/.btn-delete 通用規則（含 dark mode !important）重新加回的白底/邊框 */
 .btn-icon.btn-edit, .btn-icon.btn-delete, .btn-icon.btn-star, .btn-icon.btn-duplicate {
-  background: none; border-color: transparent;
+  background: none; border-color: transparent; padding: 0;
 }
 body.dark .btn-icon.btn-edit, body.dark .btn-icon.btn-delete,
 body.dark .btn-icon.btn-star, body.dark .btn-icon.btn-duplicate { background: none !important; }
 .btn-icon.btn-star.starred { border-color: var(--accent); background: var(--accent-light); }
 .btn-text {
-  padding: 4px 8px; font-weight: 600;
-  background: white; border: 1px solid var(--border); border-radius: 6px;
+  width: 32px; height: 30px; padding: 0; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid transparent; border-radius: 6px;
   font-size: 12px; cursor: pointer; color: var(--text-muted); transition: all 0.12s;
 }
 .btn-text:hover { border-color: var(--accent); color: var(--accent-dim); }
-body.dark .btn-text { background: #1c1c1f; border-color: #36363a; }
+body.dark .btn-text { background: none; border-color: transparent; }
+body.dark .btn-text:hover { border-color: var(--accent); }
 /* ── 標題下方一行式 Byline ─────────────────────────────── */
 .article-byline {
   display: flex; flex-wrap: wrap; align-items: center;
@@ -6164,12 +6168,12 @@ let _gvTransform = { x: 0, y: 0, k: 1 };
 let _gvDragId = null, _gvPanning = false, _gvPanStart = null, _gvMoved = false;
 
 function buildGraphData() {
+  // Only articles that participate in a [[wikilink]] (either end) become nodes —
+  // an article with just a title is not part of the link network.
   const idx = _wikiIndex();
   const nodes = new Map();
   const edges = [];
   const addNode = (id, data) => { if (!nodes.has(id)) nodes.set(id, { id, degree: 0, ...data }); return nodes.get(id); };
-
-  articles.forEach(a => addNode('a' + a.id, { type: 'article', title: a.title }));
 
   const seenEdge = new Set();
   const addEdge = (s, t) => {
@@ -6181,10 +6185,13 @@ function buildGraphData() {
     nodes.get(s).degree++; nodes.get(t).degree++;
   };
 
-  const processDoc = (id, content) => {
-    extractWikilinks(content).forEach(({ target }) => {
+  const processDoc = (a) => {
+    const id = 'a' + a.id;
+    extractWikilinks(a.content).forEach(({ target }) => {
       const hit = idx.get(target.toLowerCase());
-      if (hit) {
+      addNode(id, { type: 'article', title: a.title });
+      if (hit && hit.id != null) {
+        addNode('a' + hit.id, { type: 'article', title: hit.title });
         addEdge(id, 'a' + hit.id);
       } else {
         const ghostId = 'ghost:' + target.toLowerCase();
@@ -6193,7 +6200,7 @@ function buildGraphData() {
       }
     });
   };
-  articles.forEach(a => processDoc('a' + a.id, a.content));
+  articles.forEach(a => { if (a.id != null && a.content) processDoc(a); });
 
   return { nodes: [...nodes.values()], edges };
 }
