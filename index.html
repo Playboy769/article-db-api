@@ -1899,16 +1899,21 @@ body.dark #wikilink-ac { background: #1a1a1a; border-color: #2a2a2a; }
 #graph-panel.open { display: flex; }
 #graph-search { flex: 0 0 200px; background: var(--bg-light); border: 1px solid var(--border-dark);
   border-radius: 7px; padding: 5px 10px; font-size: 12px; color: var(--text-main); outline: none; }
-.gv-edge { stroke: var(--border-dark); stroke-width: 1; opacity: .65; transition: opacity .15s; }
-.gv-edge.dim { opacity: .08; }
-.gv-edge.auto { stroke: #8a63d2; stroke-dasharray: 3,3; opacity: .3; }
-.gv-edge.auto.dim { opacity: .04; }
+#graph-viewport { will-change: transform; }
+.gv-edge { stroke: var(--border-dark); stroke-width: 1; opacity: .55; transition: opacity .15s; }
+.gv-edge.dim { opacity: .06; }
+.gv-edge.auto { stroke: #2bb3a3; stroke-dasharray: 3,3; opacity: .22; }
+.gv-edge.auto.dim { opacity: .03; }
 .gv-node circle { cursor: pointer; transition: opacity .15s; }
 .gv-node:hover circle { stroke: var(--accent) !important; stroke-width: 2.5; }
 .gv-node.dim { opacity: .15; }
-.gv-node.auto-only circle { opacity: .8; }
-.gv-label { font-size: 10px; fill: var(--text-muted); pointer-events: none;
-  font-family: 'Segoe UI','Noto Sans TC','PingFang TC','微軟正黑體',sans-serif; }
+.gv-node.auto-only circle { opacity: .85; }
+.gv-node.isolated circle { opacity: .5; }
+/* 節點多時全部顯示標題會糊成一片：預設只在放大到一定程度、或滑鼠停在節點上時才顯示標題 */
+.gv-label { font-size: 10px; fill: var(--text-muted); pointer-events: none; opacity: 0;
+  transition: opacity .12s; font-family: 'Segoe UI','Noto Sans TC','PingFang TC','微軟正黑體',sans-serif; }
+#graph-viewport.zoomed-in .gv-label { opacity: 1; }
+.gv-node:hover .gv-label { opacity: 1 !important; }
 .graph-ctrl { display: flex; align-items: center; gap: 5px; font-size: 12px;
   color: var(--text-muted); margin-left: 12px; white-space: nowrap; }
 .graph-ctrl input[type=checkbox] { cursor: pointer; }
@@ -6249,7 +6254,7 @@ function buildGraphData() {
 // Fruchterman-Reingold 力導向佈局
 function forceLayout(nodes, edges, W, H, iterations) {
   const area = W * H;
-  const k = Math.sqrt(area / Math.max(1, nodes.length)) * 0.9;
+  const k = Math.sqrt(area / Math.max(1, nodes.length)) * 1.2;
   const pos = {};
   nodes.forEach((n, i) => {
     const ang = (2 * Math.PI * i) / nodes.length;
@@ -6295,8 +6300,75 @@ function forceLayout(nodes, edges, W, H, iterations) {
 function _gvDegColor(n) {
   if (n.type === 'ghost') return '#9aa0a8';
   if (n.hasManual) return '#4f7cff';
-  if (n.hasAuto) return '#8a63d2';
+  if (n.hasAuto) return '#2bb3a3';
   return '#c7cad1';
+}
+
+function _gvNodeRadius(n) {
+  return Math.min(20, 6 + Math.sqrt(n.degree || 0) * 3.2);
+}
+
+// 力導向佈局只模擬「點」之間的互斥/吸引，不知道每個節點畫出來實際有多大半徑，
+// 兩個節點就算沒有直接相連，也可能被別的共同連結拉到彼此重疊——這是使用者回報
+// 「點錯成旁邊別篇文章」的根本原因：畫面上兩個圓根本疊在一起，點下去只會選到最上層那個。
+// 佈局收斂後再跑幾輪「圓形碰撞消解」，依實際半徑把還重疊的節點對推開，直到不再重疊為止。
+function _gvResolveOverlaps(nodes, pos, iterations) {
+  const PAD = 3; // 額外留一點視覺間距，不要剛好貼在一起
+  for (let iter = 0; iter < iterations; iter++) {
+    let moved = false;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i], b = nodes[j];
+        const pa = pos[a.id], pb = pos[b.id];
+        if (!pa || !pb) continue;
+        const dx = pb.x - pa.x, dy = pb.y - pa.y;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+        const minDist = _gvNodeRadius(a) + _gvNodeRadius(b) + PAD;
+        if (dist < minDist) {
+          moved = true;
+          const push = (minDist - dist) / 2;
+          let ux, uy;
+          if (dist < 0.01) {
+            // 兩點完全疊在同一座標（常見於好幾個弱連結節點都被推到矩形夾制邊界的同一角落）：
+            // dx/dy 都是 0，方向沒有意義，用 i/j 算一個固定角度把它們打開，不然會除以零卡死不動。
+            const ang = i * 2.399963 + j * 0.618034;
+            ux = Math.cos(ang); uy = Math.sin(ang);
+          } else {
+            ux = dx / dist; uy = dy / dist;
+          }
+          pa.x -= ux * push; pa.y -= uy * push;
+          pb.x += ux * push; pb.y += uy * push;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+}
+
+// 沒有任何連結（degree 0）的節點四散排列在連通叢集外圍的螺旋上，
+// 避免用矩形邊界硬夾（clamp）位置時，大量孤立節點全部貼齊畫布上下緣擠成一條線。
+function _gvScatterIsolated(isolatedNodes, center, innerRadius, spacing) {
+  const pos = {};
+  const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5)); // 向日葵螺旋分佈，天然不重疊
+  isolatedNodes.forEach((n, i) => {
+    const r = innerRadius + spacing * Math.sqrt(i + 1);
+    const a = i * GOLDEN_ANGLE;
+    pos[n.id] = { x: center.x + r * Math.cos(a), y: center.y + r * Math.sin(a) };
+  });
+  return pos;
+}
+
+// 開圖時自動縮放平移，讓「連通叢集 + 外圍散佈的孤立節點」整體都落在畫面內。
+function _gvFitTransform(positions, W, H, padding) {
+  const pts = Object.values(positions);
+  if (!pts.length) return { x: 0, y: 0, k: 1 };
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const bw = Math.max(1, maxX - minX), bh = Math.max(1, maxY - minY);
+  const k = Math.min(2.2, Math.min((W - 2 * padding) / bw, (H - 2 * padding) / bh));
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  return { x: W / 2 - cx * k, y: H / 2 - cy * k, k };
 }
 
 function _gvUpdateAutoLabel() {
@@ -6348,8 +6420,27 @@ function openGraphView() {
        <div>還沒有任何連結<br>${hint}</div></div>`;
     return;
   }
-  const iterations = Math.max(60, Math.min(320, Math.round(24000 / _gvNodes.length)));
-  _gvPos = forceLayout(_gvNodes, _gvEdges, GV_W, GV_H, iterations);
+  // 有連結的節點跑力導向佈局、聚在畫面中央；沒有共同關鍵詞/wikilink 可連的孤立節點
+  // 不參與力導向（沒有邊，純靠互斥力會被推去撞矩形邊界，擠成一條線)，改用螺旋另外撒開。
+  const connected = _gvNodes.filter(n => (n.degree || 0) > 0);
+  const isolated = _gvNodes.filter(n => !(n.degree > 0));
+  let pos = {};
+  if (connected.length) {
+    const iterations = Math.max(60, Math.min(320, Math.round(24000 / connected.length)));
+    pos = forceLayout(connected, _gvEdges, GV_W, GV_H, iterations);
+    _gvResolveOverlaps(connected, pos, 80);
+  }
+  const cx = GV_W / 2, cy = GV_H / 2;
+  let maxR = 60;
+  Object.values(pos).forEach(p => { const d = Math.hypot(p.x - cx, p.y - cy); if (d > maxR) maxR = d; });
+  const isoPos = _gvScatterIsolated(isolated, { x: cx, y: cy }, maxR + 50, 26);
+  _gvPos = { ...pos, ...isoPos };
+  _gvResolveOverlaps(_gvNodes, _gvPos, 60);
+  // 開圖時只把「有連結的核心」置中放大到舒服可點的大小；孤立節點的螺旋往往散得很開，
+  // 若連同它們一起塞進畫面，核心節點會被壓縮到只剩幾個像素，一開圖遊標就很難點準。
+  // 孤立節點還在，只是初始畫面外，使用者可以自己滑鼠縮小/平移去看到它們。
+  const fitBasis = Object.keys(pos).length ? pos : _gvPos;
+  _gvTransform = _gvFitTransform(fitBasis, GV_W, GV_H, 50);
   renderGraphSVG();
 }
 
@@ -6373,11 +6464,13 @@ function renderGraphSVG() {
   _gvNodes.forEach(n => {
     const p = _gvPos[n.id];
     if (!p) return;
-    const r = Math.min(20, 6 + Math.sqrt(n.degree || 0) * 3.2);
+    const r = _gvNodeRadius(n);
     const ghost = n.type === 'ghost';
     const kwList = (n.keywords || []).slice(0, 8).map(k => k.w).join('、');
     const tip = kwList ? `<title>${escSvg((n.title || '') + '\n關鍵詞：' + kwList)}</title>` : '';
-    svg += `<g class="gv-node${(!ghost && n.hasAuto && !n.hasManual) ? ' auto-only' : ''}" data-id="${escSvg(n.id)}" transform="translate(${p.x},${p.y})">
+    const extraCls = (!ghost && n.hasAuto && !n.hasManual) ? ' auto-only'
+      : (!ghost && !n.hasAuto && !n.hasManual) ? ' isolated' : '';
+    svg += `<g class="gv-node${extraCls}" data-id="${escSvg(n.id)}" transform="translate(${p.x},${p.y})">
       <circle r="${r}" fill="${_gvDegColor(n)}" ${ghost ? 'stroke-dasharray="2,2" fill-opacity="0.35"' : ''} stroke="#fff" stroke-width="1.2"/>
       <text y="${r + 13}" text-anchor="middle" class="gv-label">${escSvg((n.title || '').slice(0, 18))}</text>
       ${tip}
@@ -6398,7 +6491,18 @@ function _gvLocalPoint(evt) {
 
 function _gvApplyTransform() {
   const vp = document.getElementById('graph-viewport');
-  if (vp) vp.setAttribute('transform', `translate(${_gvTransform.x},${_gvTransform.y}) scale(${_gvTransform.k})`);
+  if (!vp) return;
+  vp.setAttribute('transform', `translate(${_gvTransform.x},${_gvTransform.y}) scale(${_gvTransform.k})`);
+  vp.classList.toggle('zoomed-in', _gvTransform.k >= 1.4);
+}
+
+// 滾輪/拖曳事件可能比畫面更新頻率密集，用 rAF 把 DOM 寫入合併成每畫格最多一次，
+// 縮放/平移才能穩定跑滿 60Hz，不會因為連續事件疊加而卡頓。
+let _gvRafScheduled = false;
+function _gvScheduleApplyTransform() {
+  if (_gvRafScheduled) return;
+  _gvRafScheduled = true;
+  requestAnimationFrame(() => { _gvRafScheduled = false; _gvApplyTransform(); });
 }
 
 function _gvUpdatePositions() {
@@ -6460,16 +6564,18 @@ function _gvBindEvents() {
   });
   svg.addEventListener('wheel', e => {
     e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    // 用 deltaY 連續映射縮放倍率（而不是固定 ±10% 跳格），滾輪/觸控板不論滾多快
+    // 都是同一條平滑曲線，畫面更新交給 rAF 節流，維持流暢的 60Hz 縮放。
+    const factor = Math.pow(1.0015, -e.deltaY);
     const local = _gvLocalPoint(e);
-    const newK = Math.min(3, Math.max(0.25, _gvTransform.k * factor));
+    const newK = Math.min(6, Math.max(0.2, _gvTransform.k * factor));
     const pt = svg.createSVGPoint();
     pt.x = e.clientX; pt.y = e.clientY;
     const rootP = pt.matrixTransform(svg.getScreenCTM().inverse());
     _gvTransform.x = rootP.x - local.x * newK;
     _gvTransform.y = rootP.y - local.y * newK;
     _gvTransform.k = newK;
-    _gvApplyTransform();
+    _gvScheduleApplyTransform();
   }, { passive: false });
 }
 
@@ -6482,7 +6588,7 @@ document.addEventListener('mousemove', e => {
   } else if (_gvPanning) {
     _gvTransform.x = _gvPanStart.tx + (e.clientX - _gvPanStart.x);
     _gvTransform.y = _gvPanStart.ty + (e.clientY - _gvPanStart.y);
-    _gvApplyTransform();
+    _gvScheduleApplyTransform();
   }
 });
 document.addEventListener('mouseup', () => {
@@ -6510,7 +6616,9 @@ function graphFilter(q) {
 }
 
 function graphResetView() {
-  _gvTransform = { x: 0, y: 0, k: 1 };
+  // 內容現在是「連通叢集置中 + 孤立節點螺旋外圍散佈」，重置視角要回到能看到全圖的
+  // fit-to-content 縮放，而不是寫死 {x:0,y:0,k:1}（那樣常常只會看到一片空白）。
+  _gvTransform = Object.keys(_gvPos).length ? _gvFitTransform(_gvPos, GV_W, GV_H, 50) : { x: 0, y: 0, k: 1 };
   _gvApplyTransform();
 }
 </script>
@@ -6715,9 +6823,9 @@ function graphResetView() {
     <div class="cld-body" id="graph-body"></div>
     <div class="cld-legend">
       <span><b style="color:#4f7cff">●</b> 手動連結（[[標題]]）</span>
-      <span><b style="color:#8a63d2">●</b> 自動關鍵詞連結</span>
+      <span><b style="color:#2bb3a3">●</b> 自動關鍵詞連結</span>
       <span><b style="color:#9aa0a8">◌</b> 尚未建立的連結目標</span>
-      <span style="margin-left:auto">拖曳節點・滾輪縮放・拖曳空白處平移・點擊開啟・懸停看關鍵詞</span>
+      <span style="margin-left:auto">拖曳節點・滾輪縮放・拖曳空白處平移・點擊開啟・放大或懸停看標題與關鍵詞</span>
     </div>
   </div>
 </div>
