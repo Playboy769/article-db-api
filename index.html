@@ -385,7 +385,7 @@ body.dark #main { background: var(--bg-light); }
   flex-direction: column;
   flex: 1;
   overflow: hidden;
-  padding: 14px 48px 0;
+  padding: 30px 48px 0;
 }
 /* ── Reading progress bar ───────────────────────────────── */
 #article-view { position: relative; }
@@ -542,10 +542,10 @@ body.dark .btn-text:hover { border-color: var(--accent); }
   pointer-events: none;
 }
 .article-content-display {
-  font-family: 'Noto Sans TC', 'Segoe UI', 'PingFang TC', sans-serif;
+  font-family: 'Noto Serif TC', 'PMingLiU', 'Georgia', serif;
   font-size: 15px;
   color: #666;
-  line-height: 2;
+  line-height: 1.9;
   max-width: 680px;
 }
 /* 閱讀欄置中：只有文章內文水平置中，標題/meta/圖庫維持靠左 */
@@ -1101,7 +1101,7 @@ body.dark .dp-footer-btn:hover { background: #252525; }
 /* 閱讀內文 — Editorial White 排版 */
 .article-content-display {
   color: #0a0a0a;
-  max-width: 900px;
+  max-width: 680px;
 }
 .article-content-display h1,
 .article-content-display h2,
@@ -1113,11 +1113,11 @@ body.dark .dp-footer-btn:hover { background: #252525; }
   line-height: 1.35;
   letter-spacing: -.01em;
 }
-.article-content-display h1 { font-size: calc(var(--content-fs, 15px) * 1.733); margin: 0 0 18px; }
-.article-content-display h2 { font-size: calc(var(--content-fs, 15px) * 1.4); margin: 2em 0 14px; }
-.article-content-display h3 { font-size: calc(var(--content-fs, 15px) * 1.067); margin: 1.6em 0 10px; }
+.article-content-display h1 { font-size: calc(var(--content-fs, 15px) * 1.733); margin: 0 0 .6em; }
+.article-content-display h2 { font-size: calc(var(--content-fs, 15px) * 1.4); margin: 2.4em 0 .8em; }
+.article-content-display h3 { font-size: calc(var(--content-fs, 15px) * 1.15); margin: 2em 0 .7em; }
 .article-content-display h4 { font-size: calc(var(--content-fs, 15px) * 0.933); margin: 1.4em 0 8px; color: #888; }
-.article-content-display p  { margin: 0 0 1em; }
+.article-content-display p  { margin: 0 0 1.6em; }
 .article-content-display strong { color: var(--text-main); font-weight: 700; }
 .article-content-display em     { color: var(--text-muted); font-style: italic; }
 .article-content-display ul,
@@ -1643,7 +1643,7 @@ body.reading-fullscreen #main { margin-left: 0 !important; }
 #btn-fullscreen.active { color: var(--accent) !important; }
 
 /* ── Font size CSS var ───────────────────────────────────────── */
-:root { --content-fs: 15px; }
+:root { --content-fs: 19px; }
 .article-content-display { font-size: var(--content-fs); }
 
 /* ── Batch bar ───────────────────────────────────────────────── */
@@ -2615,7 +2615,7 @@ let editingId = null;
 let currentFolder = '';   // '' = 所有文章, '__uncat__' = 未分類
 let uploadedImages = [];  // base64[] for current article form
 let _batchMode = false, _batchSel = new Set();
-let _fontSize = parseInt(localStorage.getItem('article_fs') || '15');
+let _fontSize = parseInt(localStorage.getItem('article_fs') || '19');
 document.documentElement.style.setProperty('--content-fs', _fontSize + 'px');
 
 // ── Image helpers ─────────────────────────────────────────────
