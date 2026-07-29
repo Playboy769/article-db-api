@@ -2588,6 +2588,14 @@ const API_BASE = location.protocol === 'file:'
   : '';
 let folderCatMap = {};  // folder name → category id
 
+// 後端對 POST/PUT/PATCH/DELETE 強制 double-submit CSRF 檢查（見 article_db/app.py
+// 的 auth_gate middleware），token 存在非 HttpOnly 的 csrf_token cookie 裡，
+// 每個 mutating 請求都要把它原樣帶在 X-CSRF-Token header。
+function _csrfToken() {
+  const m = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : '';
+}
+
 function _parseImages(raw) { try { return JSON.parse(raw || '[]'); } catch { return []; } }
 
 function _apiToArticle(r) {
@@ -2666,7 +2674,7 @@ function getImages(obj) {
 
 async function _apiCreateFolder(name) {
   const cat = await fetch(`${API_BASE}/categories`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
+    method: 'POST', headers: {'Content-Type':'application/json', 'X-CSRF-Token': _csrfToken()},
     body: JSON.stringify({ name })
   }).then(r => r.json());
   folderCatMap[name] = cat.id;
@@ -2718,18 +2726,18 @@ function clearImages(e) {
 
 async function _apiPost(path, body) {
   return fetch(`${API_BASE}${path}`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
+    method: 'POST', headers: {'Content-Type':'application/json', 'X-CSRF-Token': _csrfToken()},
     body: JSON.stringify(body)
   }).then(r => r.json());
 }
 async function _apiPatch(path, body) {
   return fetch(`${API_BASE}${path}`, {
-    method: 'PATCH', headers: {'Content-Type':'application/json'},
+    method: 'PATCH', headers: {'Content-Type':'application/json', 'X-CSRF-Token': _csrfToken()},
     body: JSON.stringify(body)
   }).then(r => r.json());
 }
 async function _apiDelete(path) {
-  return fetch(`${API_BASE}${path}`, { method: 'DELETE' });
+  return fetch(`${API_BASE}${path}`, { method: 'DELETE', headers: {'X-CSRF-Token': _csrfToken()} });
 }
 
 function today() {
@@ -5612,7 +5620,7 @@ async function generateCLD() {
   if (!_cldDoc) return;
   showCLDLoading();
   try {
-    const res = await fetch(`${API_BASE}/articles/${_cldDoc.id}/generate-cld`, { method: 'POST' });
+    const res = await fetch(`${API_BASE}/articles/${_cldDoc.id}/generate-cld`, { method: 'POST', headers: {'X-CSRF-Token': _csrfToken()} });
     const data = await res.json();
     if (!res.ok) {
       const msg = data && data.detail ? data.detail : ('HTTP ' + res.status);
@@ -5879,7 +5887,7 @@ async function generateLearn() {
   if (!_learnDoc) return;
   showLearnLoading();
   try {
-    const res = await fetch(`${API_BASE}/articles/${_learnDoc.id}/generate-learn`, { method: 'POST' });
+    const res = await fetch(`${API_BASE}/articles/${_learnDoc.id}/generate-learn`, { method: 'POST', headers: {'X-CSRF-Token': _csrfToken()} });
     const data = await res.json();
     if (!res.ok) {
       const msg = data && data.detail ? data.detail : ('HTTP ' + res.status);
