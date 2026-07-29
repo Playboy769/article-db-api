@@ -1,6 +1,7 @@
 import html as html_mod
 import json as json_lib
 import os
+import time
 from pathlib import Path
 import re
 import urllib.error
@@ -8,6 +9,7 @@ import urllib.request
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
+from urllib.parse import quote, urlencode
 
 import httpx
 import trafilatura
@@ -16,11 +18,13 @@ from markdownify import markdownify as _md
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
+import auth as A
+from config import AUTH_SIGNING_SECRET, AUTHORIZED_EMAIL, CENTRAL_AUTH_ORIGIN
 from db import conn_ctx, init_schema
 
 
@@ -70,6 +74,103 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Auth (cross-domain login system — see auth.py for the shared token format) ──
+# OutsideFramework is the only service that talks to Google; this service just verifies
+# tokens it mints and keeps its own short-lived local session once verified once. Gating
+# this closes a real pre-existing exposure: every endpoint here (including the ones that
+# call the Gemini API) was previously reachable by anyone with no auth at all.
+AUTH_SECRET = AUTH_SIGNING_SECRET
+SESSION_COOKIE = "adb_sid"
+CSRF_COOKIE = "csrf_token"
+SESSION_TTL_SEC = 12 * 60 * 60
+_auth_fail_limiter = A.RateLimiter(window_seconds=600, max_hits=30)
+
+if not AUTH_SECRET:
+    print("WARNING: AUTH_SIGNING_SECRET is not set — every request will be treated as unauthenticated.")
+
+
+def _self_origin(request: Request) -> str:
+    host = request.headers.get("host", "articlebase.up.railway.app")
+    xf_proto = request.headers.get("x-forwarded-proto")
+    is_local = host.startswith("localhost") or host.startswith("127.0.0.1")
+    proto = xf_proto or ("http" if is_local else "https")
+    return f"{proto}://{host}"
+
+
+def _session_email(request: Request):
+    payload = A.verify_token(request.cookies.get(SESSION_COOKIE), AUTH_SECRET)
+    if not payload or not payload.get("email"):
+        return None
+    if payload["email"].lower() != AUTHORIZED_EMAIL:
+        return None
+    return payload["email"]
+
+
+def _csrf_ok(request: Request) -> bool:
+    cookie_tok = request.cookies.get(CSRF_COOKIE)
+    header_tok = request.headers.get("x-csrf-token")
+    return bool(cookie_tok) and bool(header_tok) and cookie_tok == header_tok
+
+
+def _clean_path_and_query(request: Request) -> str:
+    qs = {k: v for k, v in request.query_params.items() if k != "auth"}
+    return request.url.path + ("?" + urlencode(qs) if qs else "")
+
+
+@app.middleware("http")
+async def auth_gate(request: Request, call_next):
+    # Default-deny, allowlist the public exception (not the other way around) so a new
+    # route added later is gated by default. OPTIONS preflight is exempt too — the
+    # browser never attaches cookies to it and always follows up with the real
+    # (gated) request, so there's nothing to protect by redirecting it.
+    if request.method == "OPTIONS" or request.url.path == "/healthz":
+        return await call_next(request)
+
+    email = _session_email(request)
+    if not email:
+        self_origin = _self_origin(request)
+        token = request.query_params.get("auth")
+        payload = A.verify_token(token, AUTH_SECRET) if token else None
+        token_ok = (
+            payload
+            and payload.get("aud") == self_origin
+            and payload.get("email")
+            and payload["email"].lower() == AUTHORIZED_EMAIL
+        )
+        if token_ok:
+            session_token = A.sign_token(
+                {"email": payload["email"].lower(), "exp": time.time() + SESSION_TTL_SEC}, AUTH_SECRET
+            )
+            csrf_token = A.random_token(18)
+            is_prod = self_origin.startswith("https://")
+            resp = RedirectResponse(url=_clean_path_and_query(request), status_code=302)
+            resp.headers.append(
+                "set-cookie",
+                A.cookie_header(SESSION_COOKIE, session_token, max_age=SESSION_TTL_SEC, http_only=True, secure=is_prod),
+            )
+            resp.headers.append(
+                "set-cookie",
+                A.cookie_header(CSRF_COOKIE, csrf_token, max_age=SESSION_TTL_SEC, http_only=False, secure=is_prod),
+            )
+            return resp
+
+        if not _auth_fail_limiter.check(A.client_ip(request)):
+            return PlainTextResponse("Too many attempts. Try again later.", status_code=429)
+
+        return_to = self_origin + _clean_path_and_query(request)
+        return RedirectResponse(
+            url=f"{CENTRAL_AUTH_ORIGIN}/auth/handoff?return_to={quote(return_to, safe='')}", status_code=302
+        )
+
+    # Double-submit CSRF check applies to every mutating request once authenticated —
+    # enforced here once instead of per-route so a future POST/PATCH/DELETE endpoint is
+    # covered automatically instead of needing a remembered opt-in.
+    if request.method in ("POST", "PUT", "PATCH", "DELETE") and not _csrf_ok(request):
+        return JSONResponse({"error": "csrf"}, status_code=403)
+
+    return await call_next(request)
+
 
 _HERE = Path(__file__).parent
 
