@@ -9,7 +9,7 @@ import urllib.request
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlparse
 
 import httpx
 import trafilatura
@@ -20,7 +20,13 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+)
 from pydantic import BaseModel, Field
 
 import auth as A
@@ -90,16 +96,39 @@ if not AUTH_SECRET:
     print("WARNING: AUTH_SIGNING_SECRET is not set — every request will be treated as unauthenticated.")
 
 
+# Cookie flags and this service's own origin come from configuration, never from request
+# headers: Host and X-Forwarded-Proto are both attacker-settable, and deriving the Secure
+# flag from X-Forwarded-Proto let anyone strip it off an issued cookie by sending
+# "X-Forwarded-Proto: http".
+IS_PROD = os.getenv("ENV") == "production" or bool(os.getenv("RAILWAY_PROJECT_ID")) or bool(
+    os.getenv("RAILWAY_ENVIRONMENT_NAME")
+)
+SELF_ORIGIN = os.getenv("PUBLIC_ORIGIN", "https://articlebase.up.railway.app")
+_ALLOWED_HOSTS = {urlparse(SELF_ORIGIN).netloc.lower(), "articlebase.up.railway.app"}
+_LOCAL_HOST_RE = re.compile(r"^(localhost|127\.0\.0\.1)(:\d+)?$")
+# Marks that we already sent this browser to the central service for a handoff token.
+# See the loop breaker in auth_gate below.
+HANDOFF_TRY_COOKIE = "adb_hs"
+
+
 def _self_origin(request: Request) -> str:
-    host = request.headers.get("host", "articlebase.up.railway.app")
-    xf_proto = request.headers.get("x-forwarded-proto")
-    is_local = host.startswith("localhost") or host.startswith("127.0.0.1")
-    proto = xf_proto or ("http" if is_local else "https")
-    return f"{proto}://{host}"
+    host = (request.headers.get("host") or "").lower()
+    if not IS_PROD and _LOCAL_HOST_RE.match(host):
+        return f"http://{host}"
+    if host in _ALLOWED_HOSTS:
+        return f"https://{host}"
+    return SELF_ORIGIN
 
 
 def _session_email(request: Request):
-    payload = A.verify_token(request.cookies.get(SESSION_COOKIE), AUTH_SECRET)
+    # verify_for derives the key from the audience, so a token minted for any other service
+    # cannot produce a valid signature here. This previously checked neither aud nor typ,
+    # and the session cookie minted below carried no aud at all -- making it a universal key
+    # accepted by every sibling service that also skipped the check.
+    payload = A.verify_for(
+        request.cookies.get(SESSION_COOKIE), AUTH_SECRET,
+        aud=_self_origin(request), typ=A.TYP_SESSION,
+    )
     if not payload or not payload.get("email"):
         return None
     if payload["email"].lower() != AUTHORIZED_EMAIL:
@@ -131,37 +160,69 @@ async def auth_gate(request: Request, call_next):
     if not email:
         self_origin = _self_origin(request)
         token = request.query_params.get("auth")
-        payload = A.verify_token(token, AUTH_SECRET) if token else None
+        # aud and typ are both enforced, and the key is derived from aud -- the hand-written
+        # `payload.get("aud") == self_origin` comparison this replaces was correct, but it
+        # was the only thing standing between a token for one service and a session on
+        # another, and the session path above had no such comparison at all.
+        payload = (
+            A.verify_for(token, AUTH_SECRET, aud=self_origin, typ=A.TYP_HANDOFF) if token else None
+        )
         token_ok = (
             payload
-            and payload.get("aud") == self_origin
             and payload.get("email")
             and payload["email"].lower() == AUTHORIZED_EMAIL
         )
         if token_ok:
-            session_token = A.sign_token(
-                {"email": payload["email"].lower(), "exp": time.time() + SESSION_TTL_SEC}, AUTH_SECRET
+            # The local session now names its own audience and purpose. It used to carry
+            # neither, which made this cookie a universal key across all four services.
+            session_token = A.sign_for(
+                {
+                    "email": payload["email"].lower(),
+                    "aud": self_origin,
+                    "typ": A.TYP_SESSION,
+                    "exp": time.time() + SESSION_TTL_SEC,
+                },
+                AUTH_SECRET,
             )
             csrf_token = A.random_token(18)
-            is_prod = self_origin.startswith("https://")
             resp = RedirectResponse(url=_clean_path_and_query(request), status_code=302)
             resp.headers.append(
                 "set-cookie",
-                A.cookie_header(SESSION_COOKIE, session_token, max_age=SESSION_TTL_SEC, http_only=True, secure=is_prod),
+                A.cookie_header(SESSION_COOKIE, session_token, max_age=SESSION_TTL_SEC, http_only=True, secure=IS_PROD),
             )
             resp.headers.append(
                 "set-cookie",
-                A.cookie_header(CSRF_COOKIE, csrf_token, max_age=SESSION_TTL_SEC, http_only=False, secure=is_prod),
+                A.cookie_header(CSRF_COOKIE, csrf_token, max_age=SESSION_TTL_SEC, http_only=False, secure=IS_PROD),
             )
+            resp.headers.append("set-cookie", A.clear_cookie_header(HANDOFF_TRY_COOKIE))
             return resp
 
         if not _auth_fail_limiter.check(A.client_ip(request)):
             return PlainTextResponse("Too many attempts. Try again later.", status_code=429)
 
+        # Loop breaker. Bouncing back to /auth/handoff is right when there was no token or
+        # an expired one -- the central service just mints a fresh one. But if a token that
+        # WAS present still fails, minting another identical one fails identically and the
+        # browser ping-pongs forever. That is exactly what a signing-scheme rollout across
+        # four independently-deployed services produces mid-window, so fail loudly once.
+        if token and request.cookies.get(HANDOFF_TRY_COOKIE):
+            resp = HTMLResponse(
+                "<h1>登入交接失敗</h1><p>中央登入服務簽發的憑證無法在此服務驗證。"
+                f'若剛完成部署，請稍候一分鐘再重試。</p><p><a href="{CENTRAL_AUTH_ORIGIN}">回首頁</a></p>',
+                status_code=503,
+            )
+            resp.headers.append("set-cookie", A.clear_cookie_header(HANDOFF_TRY_COOKIE))
+            return resp
+
         return_to = self_origin + _clean_path_and_query(request)
-        return RedirectResponse(
+        resp = RedirectResponse(
             url=f"{CENTRAL_AUTH_ORIGIN}/auth/handoff?return_to={quote(return_to, safe='')}", status_code=302
         )
+        resp.headers.append(
+            "set-cookie",
+            A.cookie_header(HANDOFF_TRY_COOKIE, "1", max_age=120, http_only=True, secure=IS_PROD),
+        )
+        return resp
 
     # Double-submit CSRF check applies to every mutating request once authenticated —
     # enforced here once instead of per-route so a future POST/PATCH/DELETE endpoint is
