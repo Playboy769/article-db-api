@@ -866,7 +866,7 @@ def _json_ld(raw: str) -> dict:
             d = json_lib.loads(m.group(1))
             if isinstance(d, list):
                 d = d[0]
-            if d.get("@type") in ("Article", "NewsArticle", "BlogPosting"):
+            if d.get("@type") in ("Article", "NewsArticle", "BlogPosting", "SocialMediaPosting"):
                 if d.get("headline") and not result.get("title"):
                     result["title"] = d["headline"]
                 if d.get("author") and not result.get("author"):
@@ -874,10 +874,12 @@ def _json_ld(raw: str) -> dict:
                     if isinstance(auth, list):
                         auth = auth[0]
                     result["author"] = auth.get("name", "")
-                if d.get("datePublished") and not result.get("date"):
-                    result["date"] = d["datePublished"][:10]
-                if d.get("articleBody") and not result.get("body"):
-                    result["body"] = d["articleBody"]
+                date_val = d.get("datePublished") or d.get("dateCreated")
+                if date_val and not result.get("date"):
+                    result["date"] = date_val[:10]
+                body_val = d.get("articleBody") or d.get("text")
+                if body_val and not result.get("body"):
+                    result["body"] = body_val
         except Exception:
             pass
     return result
@@ -918,10 +920,60 @@ def _fetch_substack(url: str) -> dict | None:
     return {"title": title, "author": author, "date": date, "content": content}
 
 
+def _fetch_substack_note(url: str) -> dict | None:
+    """Substack「Notes」貼文（短動態，非文章）沒有對應的 by-slug API 可用，
+    網頁本身又是重度 SPA 殼層，一般抓取流程（trafilatura + og/meta）在這種頁面上
+    會把標題誤判成發文者名稱、作者誤判成頁面通用的 <meta name="author" content="Substack">。
+    改用頁面內嵌的 JSON-LD（@type: SocialMediaPosting）直接取得乾淨的作者與全文內容。"""
+    if not re.match(r'https?://(?:www\.)?substack\.com/@[^/?]+/note/', url):
+        return None
+
+    try:
+        with httpx.Client(headers=_FETCH_HEADERS, follow_redirects=True, timeout=15) as client:
+            r = client.get(url)
+            r.raise_for_status()
+            raw = r.text
+    except Exception:
+        return None
+
+    posting = None
+    for m in re.finditer(
+        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+        raw, re.I | re.S
+    ):
+        try:
+            d = json_lib.loads(m.group(1))
+            if isinstance(d, list):
+                d = d[0]
+            if d.get("@type") == "SocialMediaPosting" and d.get("text"):
+                posting = d
+                break
+        except Exception:
+            continue
+    if not posting:
+        return None
+
+    content = posting["text"].strip()
+    if not content:
+        return None
+
+    auth = posting.get("author") or {}
+    if isinstance(auth, list):
+        auth = auth[0] if auth else {}
+    author = auth.get("name", "")
+    date = (posting.get("dateCreated") or "")[:10]
+
+    # Notes 沒有標題欄位，用內文第一行當標題（供列表顯示用）
+    first_line = next((ln.strip() for ln in content.splitlines() if ln.strip()), "")
+    title = first_line[:60] + ("…" if len(first_line) > 60 else "")
+
+    return {"title": title, "author": author, "date": date, "content": content}
+
+
 @app.get("/fetch-url")
 def fetch_url_endpoint(url: str):
     # ── Substack ──────────────────────────────────────────────────
-    substack = _fetch_substack(url)
+    substack = _fetch_substack(url) or _fetch_substack_note(url)
     if substack:
         return substack
 
