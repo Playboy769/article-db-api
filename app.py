@@ -30,7 +30,7 @@ from fastapi.responses import (
 from pydantic import BaseModel, Field
 
 import auth as A
-from config import AUTH_SIGNING_SECRET, AUTHORIZED_EMAIL, CENTRAL_AUTH_ORIGIN
+from config import AUTH_SIGNING_SECRET, AUTHORIZED_EMAILS, CENTRAL_AUTH_ORIGIN
 from db import conn_ctx, init_schema
 
 
@@ -131,7 +131,7 @@ def _session_email(request: Request):
     )
     if not payload or not payload.get("email"):
         return None
-    if payload["email"].lower() != AUTHORIZED_EMAIL:
+    if payload["email"].lower() not in AUTHORIZED_EMAILS:
         return None
     return payload["email"]
 
@@ -170,7 +170,7 @@ async def auth_gate(request: Request, call_next):
         token_ok = (
             payload
             and payload.get("email")
-            and payload["email"].lower() == AUTHORIZED_EMAIL
+            and payload["email"].lower() in AUTHORIZED_EMAILS
         )
         if token_ok:
             # The local session now names its own audience and purpose. It used to carry
