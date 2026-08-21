@@ -28,6 +28,7 @@ ALLOWED_ORIGINS = {
     "https://globe-invest.up.railway.app",
     "https://structural-holes-production.up.railway.app",
     "https://articlebase.up.railway.app",
+    "https://gaoye-mock-exam-production.up.railway.app",
 }
 
 # Only honored when ENV != "production" -- lets return_to/redirect
@@ -37,6 +38,7 @@ DEV_ORIGINS = {
     "http://localhost:8124",  # globe
     "http://localhost:8129",  # structural-holes (local dev)
     "http://localhost:8127",  # article-db (local dev)
+    "http://localhost:8175",  # gaoye-mock-exam (local dev)
 }
 
 
